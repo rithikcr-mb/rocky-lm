@@ -1,7 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export const fetchChatStream = async (message) => {
-  const response = await fetch(`${API_BASE}/api/chat`, {
+  const response = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -16,7 +16,7 @@ export const uploadFile = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE}/api/upload`, {
+  const response = await fetch(`${API_BASE}/upload`, {
     method: "POST",
     body: formData,
   });
@@ -25,7 +25,7 @@ export const uploadFile = async (file) => {
 };
 
 export const fetchActiveDocument = async () => {
-  const response = await fetch(`${API_BASE}/api/active-document`);
+  const response = await fetch(`${API_BASE}/active-document`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch active document");
@@ -35,7 +35,7 @@ export const fetchActiveDocument = async () => {
 };
 
 export const fetchProfile = async () => {
-  const response = await fetch(`${API_BASE}/api/profile`);
+  const response = await fetch(`${API_BASE}/profile`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch profile");
@@ -45,7 +45,7 @@ export const fetchProfile = async () => {
 };
 
 export const updateProfile = async (name) => {
-  const response = await fetch(`${API_BASE}/api/profile`, {
+  const response = await fetch(`${API_BASE}/profile`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -62,7 +62,7 @@ export const updateProfile = async (name) => {
 };
 
 export const fetchResearchLog = async () => {
-  const response = await fetch(`${API_BASE}/api/research-log`);
+  const response = await fetch(`${API_BASE}/research-log`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch research log");
@@ -72,7 +72,7 @@ export const fetchResearchLog = async () => {
 };
 
 export const fetchSystemStatus = async () => {
-  const response = await fetch(`${API_BASE}/api/system-status`);
+  const response = await fetch(`${API_BASE}/system-status`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch system status");
@@ -82,7 +82,7 @@ export const fetchSystemStatus = async () => {
 };
 
 export const fetchArtifacts = async () => {
-  const response = await fetch(`${API_BASE}/api/artifacts`);
+  const response = await fetch(`${API_BASE}/artifacts`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch artifacts");
