@@ -1,0 +1,61 @@
+# ==========================
+# Logs
+# ==========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================
+# Frontend
+# ==========================
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+
+# ==========================
+# Backend
+# ==========================
+backend/__pycache__/
+backend/*.py[cod]
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Virtual environments
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+
+# Environment variables
+backend/.env
+.env
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded study files (optional)
+backend/study_materials/*
+
+# Keep folder structure
+!backend/study_materials/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Misc
+*.local
