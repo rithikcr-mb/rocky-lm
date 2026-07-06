@@ -10,11 +10,19 @@ export default function ArtifactPanel({
   rockyState
 }) {
   return (
-    <div className={`artifacts-panel flex lg:flex lg:w-[40%] flex-col bg-surface-bright border-l border-outline-variant/20 transition-all duration-300 ease-in-out ${
-      showArtifacts
-        ? 'opacity-100 translate-x-0 pointer-events-auto'
-        : 'opacity-0 translate-x-full pointer-events-none lg:w-0 lg:p-0 border-l-0 overflow-hidden'
-    }`}>
+    <>
+      {/* Mobile-only backdrop overlay */}
+      {showArtifacts && (
+        <div 
+          onClick={() => setShowArtifacts(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden animate-fade-in"
+        />
+      )}
+      <div className={`artifacts-panel fixed inset-y-0 right-0 z-40 lg:relative lg:inset-auto lg:z-auto flex w-full sm:w-[500px] lg:w-[40%] flex-col bg-surface-bright border-l border-outline-variant/20 transition-all duration-300 ease-in-out ${
+        showArtifacts
+          ? 'translate-x-0 opacity-100 pointer-events-auto shadow-2xl'
+          : 'translate-x-full opacity-0 pointer-events-none lg:translate-x-0 lg:opacity-100 lg:w-0 lg:p-0 border-l-0 overflow-hidden'
+      }`}>
       <div className="px-6 py-4 flex justify-between items-center border-b border-outline-variant/20">
         <div className="flex flex-col">
           <h2 className="font-bold text-xenonite text-lg font-heading flex items-center gap-2">
@@ -111,5 +119,6 @@ export default function ArtifactPanel({
         )}
       </div>
     </div>
+    </>
   );
 }

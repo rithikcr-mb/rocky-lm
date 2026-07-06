@@ -59,11 +59,11 @@ export default function ChatWindow({
   }, [messages]);
 
   return (
-    <div className={`w-full ${showArtifacts ? 'lg:w-[60%]' : 'lg:w-full'} flex flex-col border-b lg:border-b-0 lg:border-r border-outline-variant/20 p-3 sm:p-4 justify-between overflow-hidden transition-all duration-300 ease-in-out`}>
+    <div className={`w-full ${showArtifacts ? 'lg:w-[60%]' : 'lg:w-full'} flex flex-col border-b lg:border-b-0 lg:border-r border-outline-variant/20 p-2 sm:p-4 justify-between overflow-hidden transition-all duration-300 ease-in-out`}>
       {/* Active Study Material Banner */}
       {activeDocument.active ? (
         isBannerMinimized ? (
-          <div className="bg-basalt/50 backdrop-blur-sm border border-magma/30 rounded-xl px-4 py-2 mb-3 shadow-md flex justify-between items-center font-sans text-xs text-on-surface transition-all duration-300">
+          <div className="bg-basalt/50 backdrop-blur-sm border border-magma/30 rounded-xl px-3 py-1.5 md:px-4 md:py-2 mb-2 md:mb-3 shadow-md flex justify-between items-center font-sans text-xs text-on-surface transition-all duration-300">
             <div className="flex items-center space-x-2">
               <span>📚</span>
               <span className="font-heading font-bold text-magma">Active Study Material:</span>
@@ -78,7 +78,7 @@ export default function ChatWindow({
             </button>
           </div>
         ) : (
-          <div className="bg-basalt/50 backdrop-blur-sm border border-magma/40 rounded-xl p-4 mb-3 shadow-lg transition-all duration-300 font-sans text-xs text-on-surface hover:border-magma/60 relative">
+          <div className="bg-basalt/50 backdrop-blur-sm border border-magma/40 rounded-xl p-3 md:p-4 mb-2 md:mb-3 shadow-lg transition-all duration-300 font-sans text-xs text-on-surface hover:border-magma/60 relative">
             <button
               onClick={toggleBanner}
               type="button"
@@ -103,7 +103,7 @@ export default function ChatWindow({
           </div>
         )
       ) : (
-        <div className="bg-basalt/20 backdrop-blur-sm border border-outline-variant/15 rounded-xl p-4 mb-3 shadow-md transition-all duration-300 hover:border-magma/30">
+        <div className="bg-basalt/20 backdrop-blur-sm border border-outline-variant/15 rounded-xl p-3 md:p-4 mb-2 md:mb-3 shadow-md transition-all duration-300 hover:border-magma/30">
           <div className="flex items-center space-x-2 text-on-surface font-bold text-sm mb-1.5 font-heading">
             <span className="text-lg filter drop-shadow(0 0 4px rgba(183, 93, 41, 0.4))">📂</span>
             <span>No Study Material Loaded</span>
@@ -115,7 +115,7 @@ export default function ChatWindow({
       )}
 
       {/* Chat Space */}
-      <div className="chat-space flex-1 min-h-0 bg-background border border-outline-variant/20 overflow-y-auto p-4 space-y-4 rounded-t-xl">
+      <div className="chat-space flex-1 min-h-0 bg-background border border-outline-variant/20 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 rounded-t-xl">
         {messages.map((msg, index) => (
           <ChatMessage
             key={index}
@@ -134,8 +134,8 @@ export default function ChatWindow({
       </div>
 
       {/* Footer input zone wrapping mascot + quick actions + form */}
-      <div className="border-t-[3px] border-xenonite mt-5 pt-5 flex flex-col w-full">
-        <div className="w-full max-w-3xl mx-auto flex flex-col gap-5 px-2">
+      <div className="border-t-[3px] border-xenonite mt-4 sm:mt-5 pt-4 sm:pt-5 flex flex-col w-full">
+        <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 sm:gap-5 px-1 sm:px-2">
           {/* Mascot Status */}
           <div className="flex items-center justify-center space-x-3 py-2 bg-basalt/10 border border-outline-variant/10 rounded-xl px-4 max-w-max mx-auto shadow-sm">
             <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">

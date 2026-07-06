@@ -4,7 +4,7 @@ export default function QuickActions({ quickActions, handleQuickAction }) {
   const [activeIdx, setActiveIdx] = useState(null);
 
   return (
-    <div className="flex flex-nowrap items-center justify-center gap-2.5 w-full overflow-x-auto scrollbar-none animate-fade-in">
+    <div className="flex flex-nowrap items-center justify-start sm:justify-center gap-2.5 w-full overflow-x-auto scrollbar-none scroll-smooth animate-fade-in px-1">
       {quickActions.map((action, idx) => {
         const parts = action.label.split(' ');
         const emoji = parts[0];

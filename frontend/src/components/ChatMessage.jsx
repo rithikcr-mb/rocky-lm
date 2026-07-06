@@ -130,7 +130,7 @@ export default function ChatMessage({
       className={`chat-message chat-message-animate flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`max-w-[72%] p-3.5 rounded-xl text-sm shadow-md font-sans ${
+        className={`max-w-[85%] md:max-w-[72%] p-2.5 md:p-3.5 rounded-xl text-sm shadow-md font-sans ${
           msg.role === 'user'
             ? 'bg-magma text-white rounded-br-none whitespace-pre-wrap custom-inner-shadow'
             : 'bg-basalt rounded-bl-none text-on-surface custom-inner-shadow xenonite-border'
