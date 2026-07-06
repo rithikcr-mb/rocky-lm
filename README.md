@@ -71,7 +71,7 @@ Generated quizzes, mind maps and code reviews are displayed inside a dedicated a
 
 ---
 
-## Quiz Generation
+## Interview Preparation
 
 ![Quiz](README-assets/quiz.png)
 
