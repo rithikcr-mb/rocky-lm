@@ -6,6 +6,7 @@ export default function ChatInput({
   sendMessage,
   handleFileUpload,
   isUploading,
+  isSending,
   rockyState,
   fileInputRef,
   chatInputRef
@@ -16,7 +17,7 @@ export default function ChatInput({
         type="file"
         ref={fileInputRef}
         onChange={(e) => handleFileUpload(e.target.files?.[0], fileInputRef)}
-        accept=".pdf"
+        accept=".pdf,.txt,.md,text/plain,text/markdown,application/pdf"
         className="hidden"
         aria-label="Upload file"
       />
@@ -33,18 +34,18 @@ export default function ChatInput({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading || (rockyState !== 'idle' && rockyState !== 'error')}
+          disabled={isUploading || isSending || (rockyState !== 'idle' && rockyState !== 'error')}
           className="bg-basalt border border-outline-variant/20 hover:bg-surface-container-high hover:text-[#e67e22] hover:scale-105 active:scale-95 disabled:bg-background disabled:scale-100 text-on-surface font-bold w-12 h-12 rounded-xl text-sm transition-all duration-200 shadow-md flex items-center justify-center cursor-pointer shrink-0"
         >
           {isUploading ? '⌛' : '📎'}
         </button>
         <button
           type="submit"
-          disabled={isUploading || (rockyState !== 'idle' && rockyState !== 'error')}
-          aria-busy={isUploading}
+          disabled={isUploading || isSending || !input.trim() || (rockyState !== 'idle' && rockyState !== 'error')}
+          aria-busy={isUploading || isSending}
           className="bg-[#e67e22] hover:bg-[#d35400] hover:shadow-lg hover:shadow-[#e67e22]/25 hover:-translate-y-0.5 hover:scale-105 active:scale-95 disabled:bg-outline-variant/20 disabled:scale-100 disabled:opacity-50 text-white font-bold px-4 sm:px-6 h-12 rounded-xl text-sm transition-all duration-200 shadow-md cursor-pointer flex items-center justify-center flex-1 min-[380px]:flex-initial min-[380px]:w-auto shrink-0"
         >
-          Transmit
+          {isSending ? 'Sending...' : 'Transmit'}
         </button>
       </div>
     </form>

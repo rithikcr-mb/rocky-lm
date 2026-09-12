@@ -3,7 +3,6 @@ import re
 import json
 import asyncio
 import io
-import sys
 import logging
 import PyPDF2
 import sqlite3
@@ -50,6 +49,7 @@ async_client = None
 chat_session = None
 mcp_session = None
 mcp_cleanup = None
+chat_lock = asyncio.Lock()
 
 current_document_context = {
     "text": "",
@@ -425,10 +425,10 @@ async def lifespan(app: FastAPI):
     global async_client, chat_session, mcp_session, mcp_cleanup
     logger.info("[INIT] Starting Rocky-LM backend lifespan...")
 
-    # Validate required environment variables during startup
+    # Keep read-only and upload endpoints available when AI configuration is
+    # missing; the chat endpoint will return a clear 503 until Gemini is ready.
     if not os.environ.get("GEMINI_API_KEY"):
-        logger.critical("[CRITICAL ERROR] GEMINI_API_KEY environment variable is not set! Please define it in your .env file.")
-        sys.exit(1)
+        logger.warning("[INIT] GEMINI_API_KEY is not set; AI chat will remain unavailable.")
 
     # Initialize SQLite database schema
     startup_username = None
@@ -810,7 +810,7 @@ async def upload_endpoint(file: UploadFile = File(...)):
         raise
     except Exception as e:
         logger.error(f"[SYSTEM] Error processing uploaded content: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unable to process the uploaded document.")
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
@@ -823,18 +823,18 @@ async def chat_endpoint(request: ChatRequest):
         await asyncio.sleep(0.5) # Slight pause so the UI animation looks natural
 
         try:
-            # Send the message asynchronously and stream the response
-            response_stream = await chat_session.send_message_stream(request.message)
+            # Gemini chat sessions retain history. Prevent concurrent browser
+            # requests from interleaving messages in the shared session.
+            async with chat_lock:
+                response_stream = await chat_session.send_message_stream(request.message)
 
-            async for chunk in response_stream:
-                # If Gemini decides to use a tool, change the status flag!
-                if chunk.function_calls:
-                    yield f"data: {json.dumps({'status': 'troubleshooting', 'chunk': '[Rocky is checking tools...]'})}\n\n"
-                    continue
+                async for chunk in response_stream:
+                    if chunk.function_calls:
+                        yield f"data: {json.dumps({'status': 'troubleshooting', 'chunk': '[Rocky is checking tools...]'})}\n\n"
+                        continue
 
-                # State 2: Tell the UI Rocky is typing (Triggers the 'Talking' animation)
-                if chunk.text:
-                    yield f"data: {json.dumps({'status': 'typing', 'chunk': chunk.text})}\n\n"
+                    if chunk.text:
+                        yield f"data: {json.dumps({'status': 'typing', 'chunk': chunk.text})}\n\n"
 
             # State 3: Tell the UI Rocky is done (Triggers the 'Idle/Blinking' animation)
             yield f"data: {json.dumps({'status': 'idle', 'chunk': ''})}\n\n"

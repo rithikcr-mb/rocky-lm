@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import MermaidRenderer from './MermaidRenderer';
+
+const MermaidRenderer = lazy(() => import('./MermaidRenderer'));
 
 const renderers = {
   h1: ({ children }) => <h1 className="text-lg font-bold text-magma mt-4 mb-2 border-b border-outline-variant/20 pb-1.5">{children}</h1>,
@@ -26,13 +27,17 @@ const renderers = {
       {children}
     </blockquote>
   ),
-  code({ node, inline, className, children, ...props }) {
+  code({ className, children, ...props }) {
     const match = /language-(\w+)/.exec(className || '');
     const isMermaid = match && match[1] === 'mermaid';
     const codeString = String(children).replace(/\n$/, '');
 
     if (isMermaid) {
-      return <MermaidRenderer chart={codeString} />;
+      return (
+        <Suspense fallback={<div className="text-xs text-magma/80 animate-pulse my-4">Loading diagram renderer...</div>}>
+          <MermaidRenderer chart={codeString} />
+        </Suspense>
+      );
     }
 
     const isInline = !match && !String(children).includes('\n');
@@ -72,6 +77,25 @@ export default function ChatMessage({
   extractArtifact,
   messages = []
 }) {
+  const extracted = msg.role === 'rocky' && rockyState !== 'thinking'
+    ? extractArtifact(msg.text)
+    : null;
+  const textToShow = extracted ? extracted.remainingText : msg.text;
+
+  useEffect(() => {
+    if (!extracted || index !== actualLatestRockyIndex || artifact.content === extracted.content) {
+      return;
+    }
+
+    setArtifact({
+      type: extracted.type,
+      title: extracted.title,
+      content: extracted.content,
+      language: extracted.language || ''
+    });
+    setShowArtifacts(true);
+  }, [actualLatestRockyIndex, artifact.content, extracted, index, setArtifact, setShowArtifacts]);
+
   if (msg.role === 'system') {
     return (
       <div key={index} className="flex justify-center my-2">
@@ -80,23 +104,6 @@ export default function ChatMessage({
         </div>
       </div>
     );
-  }
-
-  let textToShow = msg.text;
-  if (msg.role === 'rocky' && rockyState !== 'thinking') {
-    const extracted = extractArtifact(msg.text);
-    if (extracted) {
-      textToShow = extracted.remainingText;
-      if (index === actualLatestRockyIndex && artifact.content !== extracted.content) {
-        setArtifact({
-          type: extracted.type,
-          title: extracted.title,
-          content: extracted.content,
-          language: extracted.language || ''
-        });
-        setShowArtifacts(true);
-      }
-    }
   }
 
   const getLoadingDetails = () => {

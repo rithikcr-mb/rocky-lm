@@ -8,6 +8,7 @@ export default function useChat() {
   const [input, setInput] = useState('');
   const [rockyState, setRockyState] = useState('idle'); // idle, thinking, typing, troubleshooting
   const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [activeDocument, setActiveDocument] = useState({ active: false, filename: '' });
   const [profile, setProfile] = useState({ hasProfile: false, name: '' });
   const isMounted = useRef(true);
@@ -45,10 +46,11 @@ export default function useChat() {
 
   const sendMessage = async (e) => {
     if (e) e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isSending) return;
 
-    const userMessage = input;
+    const userMessage = input.trim();
     setInput('');
+    setIsSending(true);
     setMessages((prev) => [...prev, { role: 'user', text: userMessage }]);
     setRockyState('thinking');
 
@@ -58,29 +60,35 @@ export default function useChat() {
     try {
       const response = await fetchChatStream(userMessage);
 
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const errorDetail = payload.detail || 'Streaming error';
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], text: `Error: ${errorDetail}` };
+          return updated;
+        });
+        return;
+      }
+
+      if (!response.body) {
+        throw new Error('The chat service returned an empty response.');
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let currentText = '';
-
-      if (!response.ok) {
-        setRockyState('idle');
-        const errorDetail = (await response.json()).detail || 'Streaming error';
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1].text = 'Error: ' + errorDetail;
-          return updated;
-        });
-      }
+      let pendingData = '';
 
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
+        pendingData += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const events = pendingData.split('\n\n');
+        pendingData = events.pop() || '';
 
-        // Chunks arrive as byte arrays, decode them to text strings
-        const chunkText = decoder.decode(value);
-        const lines = chunkText.split('\n');
-
-        for (const line of lines) {
+        for (const event of events) {
+          const line = event.split('\n').find((entry) => entry.startsWith('data: '));
+          if (!line) continue;
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
@@ -98,20 +106,31 @@ export default function useChat() {
                 setMessages((prev) => {
                   if (!isMounted.current) return prev;
                   const updated = [...prev];
-                  updated[updated.length - 1].text = currentText;
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], text: currentText };
                   return updated;
                 });
               }
             } catch (err) {
-              // Ignore partial or malformed JSON chunks during streaming splits
+              console.warn('Ignored malformed chat stream event.', err);
             }
           }
         }
+
+        if (done) break;
       }
     } catch (error) {
       if (isMounted.current) {
         console.error('Error streaming chat:', error);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], text: 'Error: Unable to reach Rocky. Please try again.' };
+          return updated;
+        });
+      }
+    } finally {
+      if (isMounted.current) {
         setRockyState('idle');
+        setIsSending(false);
       }
     }
   };
@@ -158,6 +177,7 @@ export default function useChat() {
     setRockyState,
     isUploading,
     setIsUploading,
+    isSending,
     sendMessage,
     handleFileUpload,
     activeDocument,

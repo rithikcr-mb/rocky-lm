@@ -5,7 +5,9 @@ import mermaid from 'mermaid';
 mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
-  securityLevel: 'loose',
+  // Diagrams can originate from user input. Keep Mermaid's sanitization enabled
+  // before inserting the rendered SVG into the DOM.
+  securityLevel: 'strict',
   themeVariables: {
     background: '#2d241e', // matches basalt
     primaryColor: '#161311', // background

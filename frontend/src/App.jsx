@@ -21,6 +21,7 @@ export default function App() {
     setInput,
     rockyState,
     isUploading,
+    isSending,
     sendMessage,
     handleFileUpload,
     activeDocument,
@@ -165,6 +166,7 @@ export default function App() {
             sendMessage={sendMessage}
             handleFileUpload={handleFileUpload}
             isUploading={isUploading}
+            isSending={isSending}
             fileInputRef={fileInputRef}
             chatInputRef={chatInputRef}
             activeDocument={activeDocument}

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import mermaid from 'mermaid';
 
 export default function useArtifact() {
   const [artifact, setArtifact] = useState({ type: null, title: '', content: '', language: '' });
@@ -59,6 +58,7 @@ export default function useArtifact() {
       // Render the Mermaid chart to SVG
       const renderChart = async () => {
         try {
+          const { default: mermaid } = await import('mermaid');
           const renderId = `download-render-${Math.floor(Math.random() * 10000000)}`;
           const { svg } = await mermaid.render(renderId, artifact.content);
           const blob = new Blob([svg], { type: 'image/svg+xml' });

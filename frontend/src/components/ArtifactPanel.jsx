@@ -1,5 +1,6 @@
-import React from 'react';
-import MermaidRenderer from './MermaidRenderer';
+import React, { lazy, Suspense } from 'react';
+
+const MermaidRenderer = lazy(() => import('./MermaidRenderer'));
 
 export default function ArtifactPanel({
   artifact,
@@ -94,7 +95,9 @@ export default function ArtifactPanel({
             <div className="p-5 flex flex-col overflow-y-auto">
               {artifact.type === 'mindmap' && (
                 <div className="w-full min-h-[200px] flex items-center justify-center [&_svg]:max-w-full [&_svg]:h-auto">
-                  <MermaidRenderer chart={artifact.content} />
+                  <Suspense fallback={<div className="text-xs text-magma/80 animate-pulse p-4">Loading diagram renderer...</div>}>
+                    <MermaidRenderer chart={artifact.content} />
+                  </Suspense>
                 </div>
               )}
               {artifact.type === 'code' && (

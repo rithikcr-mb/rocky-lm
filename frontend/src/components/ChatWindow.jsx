@@ -20,6 +20,7 @@ export default function ChatWindow({
   sendMessage,
   handleFileUpload,
   isUploading,
+  isSending,
   fileInputRef,
   chatInputRef,
   activeDocument = { active: false, filename: '' }
@@ -157,6 +158,7 @@ export default function ChatWindow({
             sendMessage={sendMessage}
             handleFileUpload={handleFileUpload}
             isUploading={isUploading}
+            isSending={isSending}
             rockyState={rockyState}
             fileInputRef={fileInputRef}
             chatInputRef={chatInputRef}
