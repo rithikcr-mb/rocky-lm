@@ -64,6 +64,7 @@ export default function OnboardingModal({ setProfile }) {
                 setName(e.target.value);
                 if (error) setError('');
               }}
+              aria-label="User name"
               placeholder="Enter your name..."
               className="w-full bg-[#1a1614] border border-outline-variant/30 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#e67e22] focus:ring-2 focus:ring-[#e67e22]/25 transition-all duration-200 placeholder:text-on-surface-variant/40 text-on-surface text-center font-mono"
             />
@@ -78,6 +79,7 @@ export default function OnboardingModal({ setProfile }) {
           <button
             type="submit"
             disabled={isSubmitting || !name.trim()}
+            aria-busy={isSubmitting}
             className="w-full bg-[#e67e22] hover:bg-[#d35400] active:scale-[0.98] disabled:bg-outline-variant/20 disabled:scale-100 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm transition-all duration-200 shadow-md cursor-pointer flex items-center justify-center gap-2"
           >
             {isSubmitting ? 'Registering...' : 'Continue'}

@@ -39,6 +39,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           type="button"
           className="hidden md:block text-on-surface-variant hover:text-magma p-1.5 rounded-lg hover:bg-surface-container-low transition-all duration-200 active:scale-95 cursor-pointer text-sm"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          aria-expanded={isCollapsed}
         >
           {isCollapsed ? '➡️' : '☰'}
         </button>
@@ -47,6 +48,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
       <nav className="flex flex-col space-y-2">
         <button
           onClick={() => setActiveTab('expeditions')}
+          aria-selected={activeTab === 'expeditions'}
           className={`flex items-center rounded-lg text-sm transition-all duration-200 active:scale-[0.98] justify-center md:justify-start ${
             isCollapsed ? 'md:justify-center p-3' : 'md:space-x-3 md:px-4 md:py-2.5'
           } ${
@@ -60,8 +62,9 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           <span className={`font-sans hidden ${isCollapsed ? 'md:hidden' : 'md:inline'}`}>Expeditions</span>
         </button>
         
-        <button
+<button
           onClick={() => setActiveTab('research-log')}
+          aria-selected={activeTab === 'research-log'}
           className={`flex items-center rounded-lg text-sm transition-all duration-200 active:scale-[0.98] justify-center md:justify-start ${
             isCollapsed ? 'md:justify-center p-3' : 'md:space-x-3 md:px-4 md:py-2.5'
           } ${
@@ -77,6 +80,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
         <button
           onClick={() => setActiveTab('core-status')}
+          aria-selected={activeTab === 'core-status'}
           className={`flex items-center rounded-lg text-sm transition-all duration-200 active:scale-[0.98] justify-center md:justify-start ${
             isCollapsed ? 'md:justify-center p-3' : 'md:space-x-3 md:px-4 md:py-2.5'
           } ${

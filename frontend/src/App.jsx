@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ChatWindow from './components/ChatWindow';
@@ -40,6 +41,15 @@ export default function App() {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const chatInputRef = useRef(null);
+  const typingIntervalRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'research-log') {
@@ -100,20 +110,20 @@ export default function App() {
   ];
 
   const handleQuickAction = (promptText) => {
-    if (window.typingInterval) {
-      clearInterval(window.typingInterval);
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
     }
     
     let currentText = '';
     let i = 0;
     
-    window.typingInterval = setInterval(() => {
+    typingIntervalRef.current = setInterval(() => {
       if (i < promptText.length) {
         currentText += promptText[i];
         setInput(currentText);
         i++;
       } else {
-        clearInterval(window.typingInterval);
+        clearInterval(typingIntervalRef.current);
         setTimeout(() => {
           chatInputRef.current?.focus();
         }, 50);

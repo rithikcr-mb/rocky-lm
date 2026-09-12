@@ -143,7 +143,7 @@ export default function ChatWindow({
             </div>
             <div className="text-[10px] sm:text-xs text-on-surface-variant capitalize font-mono flex items-center">
               <span className="opacity-50">Status:&nbsp;</span>
-              <span className="text-magma font-bold">{rockyState}</span>
+              <span className="text-magma font-bold" aria-live="polite">{rockyState}</span>
             </div>
           </div>
 

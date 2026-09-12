@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchChatStream, uploadFile, fetchActiveDocument, fetchProfile } from '../services/api';
 
 export default function useChat() {
@@ -10,12 +10,21 @@ export default function useChat() {
   const [isUploading, setIsUploading] = useState(false);
   const [activeDocument, setActiveDocument] = useState({ active: false, filename: '' });
   const [profile, setProfile] = useState({ hasProfile: false, name: '' });
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const getActiveDoc = async () => {
       try {
         const data = await fetchActiveDocument();
-        setActiveDocument(data);
+        if (isMounted.current) {
+          setActiveDocument(data);
+        }
       } catch (err) {
         console.error('Error fetching active document on start:', err);
       }
@@ -23,7 +32,9 @@ export default function useChat() {
     const getProfileData = async () => {
       try {
         const data = await fetchProfile();
-        setProfile(data);
+        if (isMounted.current) {
+          setProfile(data);
+        }
       } catch (err) {
         console.error('Error fetching profile on start:', err);
       }
@@ -51,6 +62,16 @@ export default function useChat() {
       const decoder = new TextDecoder();
       let currentText = '';
 
+      if (!response.ok) {
+        setRockyState('idle');
+        const errorDetail = (await response.json()).detail || 'Streaming error';
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1].text = 'Error: ' + errorDetail;
+          return updated;
+        });
+      }
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -66,13 +87,16 @@ export default function useChat() {
 
               // Update the character state based on the backend signal
               if (data.status) {
-                setRockyState(data.status);
+                if (isMounted.current) {
+                  setRockyState(data.status);
+                }
               }
 
               // If text content is arriving, append it to Rocky's latest message
               if (data.chunk) {
                 currentText += data.chunk;
                 setMessages((prev) => {
+                  if (!isMounted.current) return prev;
                   const updated = [...prev];
                   updated[updated.length - 1].text = currentText;
                   return updated;
@@ -85,8 +109,10 @@ export default function useChat() {
         }
       }
     } catch (error) {
-      console.error('Error streaming chat:', error);
-      setRockyState('idle');
+      if (isMounted.current) {
+        console.error('Error streaming chat:', error);
+        setRockyState('idle');
+      }
     }
   };
 

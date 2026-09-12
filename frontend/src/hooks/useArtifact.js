@@ -59,7 +59,8 @@ export default function useArtifact() {
       // Render the Mermaid chart to SVG
       const renderChart = async () => {
         try {
-          const { svg } = await mermaid.render('download-render', artifact.content);
+          const renderId = `download-render-${Math.floor(Math.random() * 10000000)}`;
+          const { svg } = await mermaid.render(renderId, artifact.content);
           const blob = new Blob([svg], { type: 'image/svg+xml' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');

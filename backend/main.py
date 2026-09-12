@@ -10,7 +10,7 @@ import sqlite3
 import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,7 +64,7 @@ def handle_tool_error(action: str, error: Exception) -> str:
 # Helper to read file contents from the designated ./study_materials directory using MCP client
 async def _get_document_text() -> str:
     global mcp_session
-    
+
     cached_text = current_document_context.get("text", "").strip()
     if cached_text:
         return cached_text
@@ -77,24 +77,24 @@ async def _get_document_text() -> str:
     if not mcp_session:
         logger.error("[MCP ERROR] MCP session is not initialized.")
         return ""
-        
+
     try:
         full_path = os.path.abspath(os.path.join(STUDY_MATERIALS_DIR, active_file))
         logger.info(f"[MCP] Calling read_file tool via MCP client for path: {full_path}")
-        
+
         result = await mcp_session.call_tool("read_file", arguments={"path": full_path})
-        
+
         doc_text = ""
         for content_item in result.content:
             if hasattr(content_item, "text"):
                 doc_text += content_item.text
             elif isinstance(content_item, dict) and "text" in content_item:
                 doc_text += content_item["text"]
-                
+
         doc_text_clean = doc_text.strip()
         if doc_text_clean:
             current_document_context["text"] = doc_text_clean
-            
+
         return doc_text_clean
     except Exception as e:
         logger.error(f"[MCP ERROR] Error reading file '{active_file}' via MCP client: {e}", exc_info=True)
@@ -103,18 +103,18 @@ async def _get_document_text() -> str:
 # 2. Define the Tools
 def update_difficult_topics(topic: str) -> str:
     """Tool to save struggling topics to memory."""
+    conn = sqlite3.connect(MEMORY_DB_PATH)
     try:
-        conn = sqlite3.connect(MEMORY_DB_PATH)
         cursor = conn.cursor()
         now_str = datetime.datetime.now().isoformat()
-        
+
         # Check case-insensitive match
         cursor.execute(
-            "SELECT id, times_flagged FROM difficult_topics WHERE LOWER(topic) = ?", 
+            "SELECT id, times_flagged FROM difficult_topics WHERE LOWER(topic) = ?",
             (topic.lower(),)
         )
         row = cursor.fetchone()
-        
+
         if row:
             row_id, times = row
             cursor.execute(
@@ -127,80 +127,88 @@ def update_difficult_topics(topic: str) -> str:
                 (topic, now_str, now_str)
             )
         conn.commit()
-        conn.close()
         return f"[SYSTEM] Saved '{topic}' to memory."
     except Exception as e:
         return handle_tool_error("write difficult topic to database", e)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def get_difficult_topics() -> str:
     """Retrieve all difficult topics recorded in memory, ordered by frequency of struggles."""
+    conn = sqlite3.connect(MEMORY_DB_PATH)
     try:
-        conn = sqlite3.connect(MEMORY_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT topic, times_flagged, last_flagged_at FROM difficult_topics ORDER BY times_flagged DESC")
         rows = cursor.fetchall()
-        conn.close()
-        
+
         if not rows:
             return "[SYSTEM: No difficult topics recorded yet.]"
-            
+
         formatted_topics = []
         for topic, times, last_flagged in rows:
             last_date = last_flagged.split("T")[0] if last_flagged else "unknown"
             formatted_topics.append(f"{topic} (flagged {times}x, last on {last_date})")
-            
+
         return "\n".join(formatted_topics)
     except Exception as e:
         return handle_tool_error("retrieve difficult topics", e)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 async def analyze_document(query: str) -> str:
     """Use this tool when the user asks a question about the uploaded document, syllabus, or notes."""
     active_file = current_document_context.get("active_file")
     if not active_file:
         return '[SYSTEM: No document is currently uploaded. Ask the user to upload one.]'
-        
+
     doc_text = await _get_document_text()
     if not doc_text:
         return f"[SYSTEM ERROR: Failed to read file '{active_file}' using MCP filesystem server.]"
-    
+
     # Check if the query is requesting a general summary or overview of the entire document
     summary_keywords = {"summarize", "summary", "overview", "all"}
     query_lower = query.lower()
     is_summary_request = any(keyword in query_lower for keyword in summary_keywords)
-    
+
     if is_summary_request:
         logger.info(f"[SYSTEM] Summary/overview request detected. Returning complete document context (up to 60,000 characters).")
         return doc_text[:60000]
-    
+
     paragraphs = [p.strip() for p in doc_text.split("\n\n") if p.strip()]
     if not paragraphs:
         paragraphs = [line.strip() for line in doc_text.split("\n") if line.strip()]
-        
+
     stop_words = {"what", "how", "why", "who", "where", "when", "which", "the", "a", "an", "and", "or", "but", "if", "then", "of", "in", "on", "at", "to", "for", "with", "about", "is", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does", "did"}
     query_words = [w.lower().strip("?!.,:;") for w in query.split()]
     query_words = [w for w in query_words if w and w not in stop_words]
-    
+
     if not query_words:
         query_words = [query.lower()]
-        
+
     matched = []
     for p in paragraphs:
         p_lower = p.lower()
         score = sum(1 for w in query_words if w in p_lower)
         if score > 0:
             matched.append((score, p))
-            
+
     matched.sort(key=lambda x: x[0], reverse=True)
-    
+
     if matched:
         return "\n\n---\n\n".join([item[1] for item in matched[:5]])
-        
+
     return f"[SYSTEM: No direct matches found for query '{query}'. Displaying the beginning of the document context:\n\n{doc_text[:2000]}]"
 
 async def generate_quiz(topic: str, num_questions: int = 3) -> str:
     """Use this tool when the user asks to be tested, quizzed, or assessed on a topic or the uploaded document."""
     doc_text = await _get_document_text()
-    
+
     if doc_text:
         prompt = (
             f"Generate a quiz with {num_questions} questions on the topic/content of '{topic}' based on the following document context:\n\n"
@@ -212,7 +220,7 @@ async def generate_quiz(topic: str, num_questions: int = 3) -> str:
             f"Generate a general quiz with {num_questions} questions on the topic '{topic}'. "
             "Format the output as a quiz with questions (multiple choice or short answer) and a section 'Answer Key' at the bottom. Make sure the Answer Key is clear but separated or marked as a spoiler/hidden answer key."
         )
-        
+
     try:
         response = await async_client.models.generate_content(
             model=MODEL_NAME,
@@ -225,7 +233,7 @@ async def generate_quiz(topic: str, num_questions: int = 3) -> str:
 async def generate_mindmap(topic: str) -> str:
     """Use this tool when the user asks for a visual representation, a flowchart, a mindmap, or a diagram of a concept."""
     doc_text = await _get_document_text()
-    
+
     if doc_text:
         prompt = (
             f"Generate a mindmap flowchart representing the key concepts of '{topic}' based on the following document context:\n\n"
@@ -249,7 +257,7 @@ async def generate_mindmap(topic: str) -> str:
             "Do NOT include markdown block wrappers (like ```mermaid or ```), conversational filler, HTML tags, or any other explanations. "
             "Only output the raw Mermaid diagram text, e.g. start directly with graph TD or flowchart TD."
         )
-        
+
     try:
         response = await async_client.models.generate_content(
             model=MODEL_NAME,
@@ -263,7 +271,7 @@ async def generate_mindmap(topic: str) -> str:
             text = text[3:]
         if text.endswith("```"):
             text = text[:-3]
-        
+
         # LLM-generated Mermaid labels sometimes contain nested punctuation that breaks the Mermaid parser; this sanitizes known-problematic characters.
         try:
             def sanitize_label(match):
@@ -306,7 +314,7 @@ async def debug_code(code_snippet: str) -> str:
             model=MODEL_NAME,
             contents=prompt
         )
-        
+
         try:
             conn = sqlite3.connect(MEMORY_DB_PATH)
             cursor = conn.cursor()
@@ -361,16 +369,21 @@ def get_active_persona(username: str = None) -> str:
             "SELECT topic, times_flagged FROM difficult_topics WHERE times_flagged >= 2 ORDER BY times_flagged DESC"
         )
         struggles = cursor.fetchall()
-        conn.close()
-        
-        if struggles:
-            summary_lines = ["\nThe user has struggled with the following difficult topics in the past:"]
-            for topic, times in struggles:
-                summary_lines.append(f"- {topic}: flagged {times} times")
-            summary_lines.append("You should proactively recall these past struggles and ask if the user wants to review them, or help them with these topics.")
-            struggles_part = "\n" + "\n".join(summary_lines)
     except Exception as e:
         logger.error(f"[PERSONA ERROR] Failed to read difficult topics: {e}", exc_info=True)
+        struggles = []
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    if struggles:
+        summary_lines = ["\nThe user has struggled with the following difficult topics in the past:"]
+        for topic, times in struggles:
+            summary_lines.append(f"- {topic}: flagged {times} times")
+        summary_lines.append("You should proactively recall these past struggles and ask if the user wants to review them, or help them with these topics.")
+        struggles_part = "\n" + "\n".join(summary_lines)
 
     username_part = ""
     if username:
@@ -386,7 +399,7 @@ async def init_chat_session(username: str = None):
     if async_client is None:
         logger.error("[INIT ERROR] Async Gemini Client is not initialized.")
         return
-        
+
     active_persona = get_active_persona(username)
     chat_session = async_client.chats.create(
         model=MODEL_NAME,
@@ -416,7 +429,7 @@ async def lifespan(app: FastAPI):
     if not os.environ.get("GEMINI_API_KEY"):
         logger.critical("[CRITICAL ERROR] GEMINI_API_KEY environment variable is not set! Please define it in your .env file.")
         sys.exit(1)
-    
+
     # Initialize SQLite database schema
     startup_username = None
     try:
@@ -448,13 +461,13 @@ async def lifespan(app: FastAPI):
             )
         """)
         conn.commit()
-        
+
         # Load startup username
         cursor.execute("SELECT name FROM user_profile LIMIT 1")
         row = cursor.fetchone()
         if row:
             startup_username = row[0]
-            
+
         conn.close()
         logger.info(f"[INIT] Database initialized successfully. Startup username: {startup_username}")
     except Exception as e:
@@ -467,19 +480,19 @@ async def lifespan(app: FastAPI):
             for entry in os.scandir(STUDY_MATERIALS_DIR):
                 if entry.is_file() and entry.name.lower().endswith((".txt", ".md")):
                     valid_files.append(entry)
-            
+
             if valid_files:
                 # Pick the one with the most recent modification time
                 newest_file = max(valid_files, key=lambda e: os.path.getmtime(e.path))
                 filename = newest_file.name
-                
+
                 try:
                     with open(newest_file.path, "r", encoding="utf-8") as f:
                         content = f.read()
                 except UnicodeDecodeError:
                     with open(newest_file.path, "r", encoding="latin-1") as f:
                         content = f.read()
-                
+
                 current_document_context["text"] = content.strip()
                 current_document_context["active_file"] = filename
                 logger.info(f"[INIT] Restored active document from disk: {filename}")
@@ -492,7 +505,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize Async Gemini Client
     try:
-        client_obj = genai.Client()
+        client_obj = genai.Client(http_options=types.HttpOptions(timeout=30))
         async_client = await client_obj.aio.__aenter__()
         await init_chat_session(startup_username)
     except Exception as e:
@@ -505,16 +518,16 @@ async def lifespan(app: FastAPI):
         command="npx.cmd",
         args=["-y", "@modelcontextprotocol/server-filesystem", STUDY_MATERIALS_DIR]
     )
-    
+
     try:
         logger.info(f"[MCP] Connecting to filesystem MCP server for directory: {STUDY_MATERIALS_DIR}")
         client_ctx = stdio_client(server_params)
         read, write = await client_ctx.__aenter__()
-        
+
         session = ClientSession(read, write)
         await session.__aenter__()
         await session.initialize()
-        
+
         mcp_session = session
         mcp_cleanup = (client_ctx, session)
         logger.info("[MCP] Successfully connected to filesystem MCP server.")
@@ -537,7 +550,7 @@ async def lifespan(app: FastAPI):
             await client_ctx.__aexit__(None, None, None)
         except Exception:
             pass
-            
+
     if async_client:
         try:
             await client_obj.aio.__aexit__(None, None, None)
@@ -549,16 +562,18 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Allow our React frontend to talk to this API
+# Restrict to localhost development origin; tighten for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # 4. Define the Request Data Structure
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(default="", max_length=10000)
 
 # 5. Endpoints
 class ProfileRequest(BaseModel):
@@ -566,18 +581,22 @@ class ProfileRequest(BaseModel):
 
 @app.get("/profile")
 async def get_profile():
+    conn = sqlite3.connect(MEMORY_DB_PATH)
     try:
-        conn = sqlite3.connect(MEMORY_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM user_profile LIMIT 1")
         row = cursor.fetchone()
-        conn.close()
         if row:
             return {"hasProfile": True, "name": row[0]}
         return {"hasProfile": False}
     except Exception as e:
         logger.error(f"Error fetching profile: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error fetching profile.")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @app.post("/profile")
 async def create_or_update_profile(profile: ProfileRequest):
@@ -586,21 +605,25 @@ async def create_or_update_profile(profile: ProfileRequest):
         raise HTTPException(status_code=400, detail="Name cannot be empty.")
     if len(trimmed_name) > 50:
         raise HTTPException(status_code=400, detail="Name must be 50 characters or less.")
-        
+
+    conn = sqlite3.connect(MEMORY_DB_PATH)
     try:
-        conn = sqlite3.connect(MEMORY_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("INSERT OR REPLACE INTO user_profile (id, name) VALUES (1, ?)", (trimmed_name,))
         conn.commit()
-        conn.close()
-        
+
         # Re-initialize the chat session with the new username context
         await init_chat_session(trimmed_name)
-        
+
         return {"message": "Profile updated successfully.", "name": trimmed_name}
     except Exception as e:
         logger.error(f"Error saving profile: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error saving profile.")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @app.get("/active-document")
 async def get_active_document():
@@ -616,12 +639,11 @@ async def get_active_document():
 
 @app.get("/research-log")
 async def get_research_log():
+    conn = sqlite3.connect(MEMORY_DB_PATH)
     try:
-        conn = sqlite3.connect(MEMORY_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT topic, times_flagged, first_flagged_at, last_flagged_at FROM difficult_topics ORDER BY times_flagged DESC")
         rows = cursor.fetchall()
-        conn.close()
         topics = [
             {
                 "topic": row[0],
@@ -634,21 +656,25 @@ async def get_research_log():
     except Exception as e:
         logger.error(f"Error fetching research log: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error fetching research log.")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @app.get("/system-status")
 async def get_system_status():
+    conn = sqlite3.connect(MEMORY_DB_PATH)
     try:
-        conn = sqlite3.connect(MEMORY_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM difficult_topics")
         count = cursor.fetchone()[0]
-        conn.close()
-        
+
         gemini_active = chat_session is not None
         mcp_connected = mcp_session is not None
         active_document = bool(current_document_context.get("active_file"))
         active_document_name = current_document_context.get("active_file", "")
-        
+
         return {
             "gemini_active": gemini_active,
             "mcp_connected": mcp_connected,
@@ -660,15 +686,19 @@ async def get_system_status():
     except Exception as e:
         logger.error(f"Error fetching system status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error fetching system status.")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @app.get("/artifacts")
 async def get_artifacts():
+    conn = sqlite3.connect(MEMORY_DB_PATH)
     try:
-        conn = sqlite3.connect(MEMORY_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT id, type, title, content, language, created_at FROM artifacts_archive ORDER BY created_at DESC LIMIT 50")
         rows = cursor.fetchall()
-        conn.close()
         artifacts = [
             {
                 "id": row[0],
@@ -683,13 +713,18 @@ async def get_artifacts():
     except Exception as e:
         logger.error(f"Error fetching artifacts archive: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error fetching artifacts archive.")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @app.post("/upload")
 async def upload_endpoint(file: UploadFile = File(...)):
     filename = file.filename or ""
     file_ext = os.path.splitext(filename)[1].lower()
     mime_type = file.content_type
-    
+
     if file_ext not in ALLOWED_EXTENSIONS or (mime_type and mime_type not in ALLOWED_MIME_TYPES):
         raise HTTPException(
             status_code=400,
@@ -698,21 +733,21 @@ async def upload_endpoint(file: UploadFile = File(...)):
 
     try:
         content = await file.read()
-        
+
         # 1. Empty files validation
         if len(content) == 0:
             raise HTTPException(
                 status_code=400,
                 detail="Empty file uploaded. Rocky requires text content to analyze."
             )
-            
+
         # 2. Oversized files validation
         if len(content) > MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=400,
                 detail=f"File exceeds maximum allowed size of {MAX_FILE_SIZE // (1024 * 1024)}MB."
             )
-        
+
         if file_ext == ".pdf":
             # 3. Corrupt PDFs validation
             try:
@@ -732,7 +767,7 @@ async def upload_endpoint(file: UploadFile = File(...)):
                     status_code=400,
                     detail="Encrypted PDFs are not supported. Please upload a decrypted document."
                 )
-                
+
             extracted_text = ""
             for page in pdf_reader.pages:
                 text = page.extract_text()
@@ -744,16 +779,16 @@ async def upload_endpoint(file: UploadFile = File(...)):
                 extracted_text = content.decode("utf-8")
             except UnicodeDecodeError:
                 extracted_text = content.decode("latin-1")
-        
+
         # Save to ./study_materials directory
         base_name = os.path.basename(os.path.splitext(filename)[0])
         if file_ext == ".pdf":
             txt_filename = f"{base_name}.txt"
         else:
             txt_filename = f"{base_name}{file_ext}"
-            
+
         file_path = os.path.join(STUDY_MATERIALS_DIR, txt_filename)
-        
+
         # 5. Duplicate filenames validation
         if os.path.exists(file_path):
             logger.warning(f"File already exists at destination path: {file_path}")
@@ -761,13 +796,13 @@ async def upload_endpoint(file: UploadFile = File(...)):
                 status_code=400,
                 detail="A file with this name already exists in study materials."
             )
-            
+
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(extracted_text.strip())
-            
+
         current_document_context["active_file"] = txt_filename
         current_document_context["text"] = extracted_text.strip()
-        
+
         logger.info(f"[SYSTEM] Saved extracted text ({len(extracted_text)} chars) to study materials: {txt_filename}")
         return {"message": "Document uploaded successfully. Rocky is ready to analyze."}
     except HTTPException:
@@ -781,29 +816,29 @@ async def upload_endpoint(file: UploadFile = File(...)):
 async def chat_endpoint(request: ChatRequest):
     if chat_session is None:
         raise HTTPException(status_code=503, detail="AI Service is starting up, please try again.")
-        
+
     async def event_generator():
         # State 1: Tell the UI Rocky is thinking (Triggers the 'Gears Turning' animation)
         yield f"data: {json.dumps({'status': 'thinking', 'chunk': ''})}\n\n"
         await asyncio.sleep(0.5) # Slight pause so the UI animation looks natural
-        
+
         try:
             # Send the message asynchronously and stream the response
             response_stream = await chat_session.send_message_stream(request.message)
-            
+
             async for chunk in response_stream:
                 # If Gemini decides to use a tool, change the status flag!
                 if chunk.function_calls:
                     yield f"data: {json.dumps({'status': 'troubleshooting', 'chunk': '[Rocky is checking tools...]'})}\n\n"
                     continue
-                
+
                 # State 2: Tell the UI Rocky is typing (Triggers the 'Talking' animation)
                 if chunk.text:
                     yield f"data: {json.dumps({'status': 'typing', 'chunk': chunk.text})}\n\n"
-            
+
             # State 3: Tell the UI Rocky is done (Triggers the 'Idle/Blinking' animation)
             yield f"data: {json.dumps({'status': 'idle', 'chunk': ''})}\n\n"
-            
+
         except Exception as e:
             logger.error(f"[CHAT ERROR] Stream failure: {e}", exc_info=True)
             err_msg = str(e).lower()
