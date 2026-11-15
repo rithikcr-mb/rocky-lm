@@ -1,4 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import {
+  Activity,
+  Archive,
+  ChevronLeft,
+  Code2,
+  Loader2,
+  Network,
+  NotebookText,
+  PackageOpen,
+  X,
+} from 'lucide-react';
 
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -9,12 +20,38 @@ import useChat from './hooks/useChat';
 import useArtifact from './hooks/useArtifact';
 import { fetchResearchLog, fetchSystemStatus, fetchArtifacts } from './services/api';
 
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function StatusDot({ ok }) {
+  return (
+    <span
+      className={`inline-block h-1.5 w-1.5 rounded-[1px] ${ok ? 'bg-positive' : 'bg-negative'}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+function EmptyState({ icon: Icon, title, children }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <Icon size={24} strokeWidth={1.5} className="text-ink-muted" aria-hidden="true" />
+      <p className="mt-3 text-[13px] font-medium text-ink">{title}</p>
+      <p className="mt-1 max-w-[260px] text-[12px] leading-5 text-ink-muted">{children}</p>
+    </div>
+  );
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('expeditions');
   const [researchLog, setResearchLog] = useState([]);
   const [systemStatus, setSystemStatus] = useState(null);
   const [archivedArtifacts, setArchivedArtifacts] = useState([]);
-  
+
   const {
     messages,
     input,
@@ -26,7 +63,7 @@ export default function App() {
     handleFileUpload,
     activeDocument,
     profile,
-    setProfile
+    setProfile,
   } = useChat();
 
   const {
@@ -36,21 +73,12 @@ export default function App() {
     setShowArtifacts,
     extractArtifact,
     handleDownload,
-    handleExport
+    handleExport,
   } = useArtifact();
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const chatInputRef = useRef(null);
-  const typingIntervalRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (activeTab === 'research-log') {
@@ -104,54 +132,28 @@ export default function App() {
   }, []);
 
   const quickActions = [
-    { label: '📝 Quiz', prompt: 'Generate a quiz on the following topic: ' },
-    { label: '🗺️ Mindmap', prompt: 'Draw a mindmap of the following concept: ' },
-    { label: '👔 Interview', prompt: 'Conduct a practice interview on: ' },
-    { label: '🐛 Debug', prompt: 'Check this code for errors:\n\n' }
+    { id: 'quiz', label: 'Quiz', prompt: 'Generate a quiz on the following topic: ' },
+    { id: 'mindmap', label: 'Mindmap', prompt: 'Draw a mindmap of the following concept: ' },
+    { id: 'interview', label: 'Interview', prompt: 'Conduct a practice interview on: ' },
+    { id: 'debug', label: 'Debug', prompt: 'Check this code for errors:\n\n' },
   ];
 
   const handleQuickAction = (promptText) => {
-    if (typingIntervalRef.current) {
-      clearInterval(typingIntervalRef.current);
-    }
-    
-    let currentText = '';
-    let i = 0;
-    
-    typingIntervalRef.current = setInterval(() => {
-      if (i < promptText.length) {
-        currentText += promptText[i];
-        setInput(currentText);
-        i++;
-      } else {
-        clearInterval(typingIntervalRef.current);
-        setTimeout(() => {
-          chatInputRef.current?.focus();
-        }, 50);
-      }
-    }, 12);
+    setInput(promptText);
+    requestAnimationFrame(() => chatInputRef.current?.focus());
   };
 
+  const closeTab = () => setActiveTab('expeditions');
+
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
-      {/* Left Sidebar */}
+    <div className="flex h-dvh w-full overflow-hidden bg-background font-sans">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Main Content Area (Header + Split Pane Layout) */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Global Header */}
-        <Header
-          artifact={artifact}
-          showArtifacts={showArtifacts}
-          setShowArtifacts={setShowArtifacts}
-          profile={profile}
-        />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header profile={profile} />
 
-        {/* Two-Pane split area - always render expeditions to keep chat active */}
-        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative">
-          {/* Left "chat-pane" */}
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
           <ChatWindow
-            showArtifacts={showArtifacts}
             messages={messages}
             rockyState={rockyState}
             artifact={artifact}
@@ -172,7 +174,6 @@ export default function App() {
             activeDocument={activeDocument}
           />
 
-          {/* Right "artifacts-pane" */}
           <ArtifactPanel
             artifact={artifact}
             showArtifacts={showArtifacts}
@@ -182,204 +183,251 @@ export default function App() {
             rockyState={rockyState}
           />
 
-          {/* Collapsed Artifacts Handle Tab */}
           {artifact.type !== null && !showArtifacts && (
             <button
+              type="button"
               onClick={() => setShowArtifacts(true)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-basalt border-l border-y border-magma/40 text-magma hover:bg-magma hover:text-white px-2.5 py-4 rounded-l-xl text-xs font-mono transition-all duration-300 active:scale-95 cursor-pointer flex flex-col items-center gap-1.5 shadow-2xl hover:border-magma"
-              title="Open Artifact Panel"
+              className="absolute right-0 top-1/2 z-20 flex h-20 w-9 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-l-lg border border-r-0 border-line bg-surface text-ink-muted transition-colors duration-150 ease-ease hover:bg-surface-raised hover:text-ink"
+              aria-label="Open artifacts"
+              title="Open artifacts"
             >
-              <span>◀</span>
-              <span>📦</span>
+              <ChevronLeft size={14} strokeWidth={1.5} aria-hidden="true" />
+              <PackageOpen size={16} strokeWidth={1.5} aria-hidden="true" />
             </button>
           )}
         </div>
 
-        {/* Research Log Drawer (Slide from Left) */}
         {activeTab === 'research-log' && (
-          <div 
-            className="fixed inset-0 z-50 flex bg-black/50 backdrop-blur-sm modal-backdrop-animate"
-            onClick={() => setActiveTab('expeditions')}
+          <div
+            className="modal-backdrop-animate fixed inset-0 z-50 flex bg-black/50"
+            onClick={closeTab}
+            role="presentation"
           >
-            <div 
+            <section
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-surface-bright border-r border-outline-variant/30 shadow-2xl flex flex-col h-full animate-slide-left-in"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="research-log-title"
+              className="animate-slide-left-in flex h-full w-full max-w-[440px] flex-col border-r border-line bg-background"
             >
-              <div className="flex justify-between items-center p-6 border-b border-outline-variant/20">
+              <header className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
                 <div>
-                  <h2 className="font-bold text-xenonite text-xl font-heading">Research Log</h2>
-                  <p className="text-[10px] text-on-surface-variant font-mono uppercase tracking-wider">Expedition logs and performance records</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="bg-magma/15 border border-magma/30 text-magma text-xs px-3 py-1 rounded-full font-mono font-bold">
-                    {researchLog.length} Topics Tracked
-                  </span>
-                  <button
-                    onClick={() => setActiveTab('expeditions')}
-                    className="text-on-surface-variant hover:text-magma p-1.5 rounded-lg hover:bg-surface-container-high transition-all cursor-pointer font-sans"
-                  >
-                    Close ✕
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {researchLog.length > 0 ? (
-                  researchLog.map((item, index) => (
-                    <div key={index} className="bg-basalt/40 border border-outline-variant/15 p-4 rounded-xl flex justify-between items-center shadow-md">
-                      <div>
-                        <h3 className="font-bold text-on-surface text-sm font-heading">{item.topic}</h3>
-                        <p className="text-xs text-on-surface-variant font-sans mt-1">Times flagged: {item.times_flagged}</p>
-                      </div>
-                      <span className="text-[10px] text-on-surface-variant/70 font-mono">
-                        {item.last_flagged_at ? item.last_flagged_at.split('T')[0] : ''}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto bg-basalt/20 border border-outline-variant/10 rounded-2xl p-6 shadow-inner w-full animate-fade-in">
-                    <div className="text-5xl mb-4 filter drop-shadow(0 0 8px rgba(226, 167, 111, 0.3)) animate-bounce select-none">📝</div>
-                    <h3 className="font-bold text-on-surface text-base mb-1 font-heading">No Difficult Topics</h3>
-                    <p className="text-xs font-sans text-on-surface-variant/70 leading-relaxed">
-                      No difficult topics recorded yet — Rocky will log topics here automatically as you study.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Archived Artifacts Drawer (Slide from Right) */}
-        {activeTab === 'archived-artifacts' && (
-          <div 
-            className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm modal-backdrop-animate"
-            onClick={() => setActiveTab('expeditions')}
-          >
-            <div 
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-surface-bright border-l border-outline-variant/30 shadow-2xl flex flex-col h-full animate-slide-right-in"
-            >
-              <div className="flex justify-between items-center p-6 border-b border-outline-variant/20">
-                <div>
-                  <h2 className="font-bold text-xenonite text-xl font-heading">Archived Artifacts</h2>
-                  <p className="text-[10px] text-on-surface-variant font-mono uppercase tracking-wider">History and backup repositories</p>
+                  <h2 id="research-log-title" className="text-lg font-medium text-ink">
+                    Research log
+                  </h2>
+                  <p className="mt-1 text-[12px] text-ink-muted">Topics Rocky has flagged</p>
                 </div>
                 <button
-                  onClick={() => setActiveTab('expeditions')}
-                  className="text-on-surface-variant hover:text-magma p-1.5 rounded-lg hover:bg-surface-container-high transition-all cursor-pointer font-sans"
+                  type="button"
+                  onClick={closeTab}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 ease-ease hover:bg-surface hover:text-ink"
+                  aria-label="Close research log"
                 >
-                  Close ✕
+                  <X size={16} strokeWidth={1.5} aria-hidden="true" />
                 </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {archivedArtifacts.length > 0 ? (
-                  <div className="space-y-4">
-                    {archivedArtifacts.map((item, index) => (
-                      <div
-                        key={index}
-                        onClick={() => {
-                          setArtifact({
-                            type: item.type,
-                            title: item.title,
-                            content: item.content,
-                            language: item.language
-                          });
-                          setShowArtifacts(true);
-                          setActiveTab('expeditions');
-                        }}
-                        className="bg-basalt/40 border border-outline-variant/15 p-4 rounded-xl flex justify-between items-center shadow-md cursor-pointer hover:bg-basalt/60 transition-colors"
-                      >
-                        <div>
-                          <h3 className="font-bold text-on-surface text-sm font-heading">{item.title}</h3>
-                          <p className="text-xs text-on-surface-variant font-sans mt-1">
-                            Type: {item.type === 'mindmap' ? '📊 mindmap' : '💻 code'}
-                          </p>
-                        </div>
-                        <span className="text-[10px] text-on-surface-variant/70 font-mono">
-                          {item.created_at ? item.created_at.split('T')[0] : ''}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto bg-basalt/20 border border-outline-variant/10 rounded-2xl p-6 shadow-inner w-full animate-fade-in">
-                    <div className="text-5xl mb-4 text-on-surface-variant/40 filter drop-shadow(0 0 8px rgba(0,0,0,0.3)) select-none">🗄️</div>
-                    <h3 className="font-bold text-on-surface text-base mb-1 font-heading">Archive Empty</h3>
-                    <p className="text-xs font-sans text-on-surface-variant/70 leading-relaxed">
-                      There are currently no archived diagrams, quizzes, or code records in the local storage vault. Compilations will remain active in the workspace until explicitly cataloged.
+              </header>
+
+              <div className="flex flex-1 flex-col overflow-y-auto p-4">
+                {researchLog.length > 0 ? (
+                  <>
+                    <p className="mb-3 font-mono text-[11px] text-ink-muted">
+                      {researchLog.length} {researchLog.length === 1 ? 'topic' : 'topics'}
                     </p>
+                    <ul className="space-y-2">
+                      {researchLog.map((item, index) => (
+                        <li
+                          key={`${item.topic}-${index}`}
+                          className="rounded-xl border border-line bg-surface px-4 py-3.5"
+                        >
+                          <p className="text-[13px] font-medium text-ink">{item.topic}</p>
+                          <p className="mt-1 font-mono text-[11px] tabular-nums text-ink-muted">
+                            {item.times_flagged} {item.times_flagged === 1 ? 'time' : 'times'}
+                            {item.last_flagged_at ? ` · last ${formatDate(item.last_flagged_at)}` : ''}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <EmptyState icon={NotebookText} title="No difficult topics yet">
+                      Rocky logs a topic here when you say you are struggling with it.
+                    </EmptyState>
                   </div>
                 )}
               </div>
-            </div>
+            </section>
           </div>
         )}
 
-        {/* Core Status Modal Panel */}
-        {activeTab === 'core-status' && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 modal-backdrop-animate"
-            onClick={() => setActiveTab('expeditions')}
+        {activeTab === 'archived-artifacts' && (
+          <div
+            className="modal-backdrop-animate fixed inset-0 z-50 flex justify-end bg-black/50"
+            onClick={closeTab}
+            role="presentation"
           >
-            <div 
+            <section
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl bg-surface-bright border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative font-sans text-on-surface modal-content-animate flex flex-col justify-center"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="archive-title"
+              className="animate-slide-right-in flex h-full w-full max-w-[440px] flex-col border-l border-line bg-background"
             >
-              <button
-                onClick={() => setActiveTab('expeditions')}
-                className="absolute top-4 right-4 text-on-surface-variant hover:text-magma p-1.5 rounded-lg hover:bg-surface-container-high transition-all cursor-pointer font-sans"
-              >
-                ✕ Close
-              </button>
-              <div className="flex items-center space-x-3 border-b border-outline-variant/20 pb-3 mb-5">
-                <div className="w-3.5 h-3.5 rounded-full bg-[#7fffd4] animate-ping absolute"></div>
-                <div className="w-3.5 h-3.5 rounded-full bg-[#7fffd4] relative"></div>
-                <h3 className="font-bold text-xenonite text-lg font-mono tracking-wide">Core Status Monitor</h3>
+              <header className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+                <div>
+                  <h2 id="archive-title" className="text-lg font-medium text-ink">
+                    Archived artifacts
+                  </h2>
+                  <p className="mt-1 text-[12px] text-ink-muted">Saved mindmaps and code reviews</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeTab}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 ease-ease hover:bg-surface hover:text-ink"
+                  aria-label="Close archive"
+                >
+                  <X size={16} strokeWidth={1.5} aria-hidden="true" />
+                </button>
+              </header>
+
+              <div className="flex flex-1 flex-col overflow-y-auto p-4">
+                {archivedArtifacts.length > 0 ? (
+                  <ul className="space-y-2">
+                    {archivedArtifacts.map((item, index) => {
+                      const Icon = item.type === 'mindmap' ? Network : Code2;
+                      return (
+                        <li key={`${item.title}-${index}`}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setArtifact({
+                                type: item.type,
+                                title: item.title,
+                                content: item.content,
+                                language: item.language,
+                              });
+                              setShowArtifacts(true);
+                              closeTab();
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3.5 text-left transition-colors duration-150 ease-ease hover:bg-surface-raised"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-raised text-ink-muted">
+                              <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[13px] font-medium text-ink">
+                                {item.title}
+                              </span>
+                              <span className="mt-1 block font-mono text-[11px] text-ink-muted">
+                                {item.type === 'mindmap' ? 'Mindmap' : 'Code review'}
+                                {item.created_at ? ` · ${formatDate(item.created_at)}` : ''}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <EmptyState icon={Archive} title="Nothing archived yet">
+                      Generated artifacts are saved here.
+                    </EmptyState>
+                  </div>
+                )}
               </div>
-              {!systemStatus ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center w-full">
-                  <div className="w-8 h-8 border-4 border-magma/30 border-t-magma rounded-full animate-spin mb-4"></div>
-                  <div className="text-xs font-mono text-on-surface-variant animate-pulse">
-                    Synaptic handshake in progress...
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'core-status' && (
+          <div
+            className="modal-backdrop-animate fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={closeTab}
+            role="presentation"
+          >
+            <section
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="core-status-title"
+              className="modal-content-animate w-full max-w-[520px] rounded-2xl border border-line bg-surface shadow-overlay"
+            >
+              <header className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+                <div className="flex items-start gap-2.5">
+                  <Activity size={18} strokeWidth={1.5} className="mt-0.5 text-ink-muted" aria-hidden="true" />
+                  <div>
+                    <h2 id="core-status-title" className="text-lg font-medium text-ink">
+                      Core status
+                    </h2>
+                    <p className="mt-1 text-[12px] text-ink-muted">Live service checks</p>
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-background/80 border border-outline-variant/15 p-4 rounded-xl flex flex-col">
-                      <span className="text-[10px] text-on-surface-variant font-mono uppercase tracking-widest">Main Reactor</span>
-                      <span className={`font-bold text-lg font-mono mt-1 ${systemStatus.gemini_active ? 'text-[#7fffd4]' : 'text-[#ff4a4a]'}`}>
-                        {systemStatus.gemini_active ? 'ONLINE' : 'OFFLINE'}
-                      </span>
-                    </div>
-                    <div className="bg-background/80 border border-outline-variant/15 p-4 rounded-xl flex flex-col">
-                      <span className="text-[10px] text-on-surface-variant font-mono uppercase tracking-widest">Memory Database</span>
-                      <span className="text-[#7fffd4] font-bold text-lg font-mono mt-1">{systemStatus.difficult_topics_count}</span>
-                    </div>
-                    <div className="bg-background/80 border border-outline-variant/15 p-4 rounded-xl flex flex-col">
-                      <span className="text-[10px] text-on-surface-variant font-mono uppercase tracking-widest">MCP Pipeline</span>
-                      <span className={`font-bold text-lg font-mono mt-1 ${systemStatus.mcp_connected ? 'text-[#7fffd4]' : 'text-[#ff4a4a]'}`}>
-                        {systemStatus.mcp_connected ? 'CONNECTED' : 'DISCONNECTED'}
-                      </span>
-                    </div>
-                    <div className="bg-background/80 border border-outline-variant/15 p-4 rounded-xl flex flex-col">
-                      <span className="text-[10px] text-on-surface-variant font-mono uppercase tracking-widest">Core Version</span>
-                      <span className="text-on-surface font-bold text-lg font-mono mt-1">{systemStatus.model_name}</span>
-                    </div>
+                <button
+                  type="button"
+                  onClick={closeTab}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 ease-ease hover:bg-surface-raised hover:text-ink"
+                  aria-label="Close core status"
+                >
+                  <X size={16} strokeWidth={1.5} aria-hidden="true" />
+                </button>
+              </header>
+
+              <div className="p-5">
+                {!systemStatus ? (
+                  <div className="flex items-center justify-center gap-2 py-8 text-[13px] text-ink-secondary">
+                    <Loader2 size={16} strokeWidth={1.5} className="animate-spin text-ember" aria-hidden="true" />
+                    Loading status
                   </div>
-                  <div className="mt-5 bg-background/50 border border-outline-variant/10 p-3 rounded-xl text-center text-xs text-on-surface-variant/80 font-mono">
-                    All subsystems reporting nominal crystallization parameters.
-                  </div>
-                </>
-              )}
-            </div>
+                ) : (
+                  <>
+                    <dl className="divide-y divide-line rounded-xl border border-line bg-background">
+                      <div className="flex items-center justify-between gap-4 px-4 py-3">
+                        <dt className="text-[13px] text-ink-secondary">Model</dt>
+                        <dd className="font-mono text-[12px] text-ink">{systemStatus.model_name}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 px-4 py-3">
+                        <dt className="text-[13px] text-ink-secondary">Main model</dt>
+                        <dd className="flex items-center gap-2 font-mono text-[12px] text-ink">
+                          <StatusDot ok={systemStatus.gemini_active} />
+                          {systemStatus.gemini_active ? 'Online' : 'Offline'}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 px-4 py-3">
+                        <dt className="text-[13px] text-ink-secondary">Memory</dt>
+                        <dd className="font-mono text-[12px] tabular-nums text-ink">
+                          {systemStatus.difficult_topics_count}{' '}
+                          {systemStatus.difficult_topics_count === 1 ? 'topic' : 'topics'}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 px-4 py-3">
+                        <dt className="text-[13px] text-ink-secondary">MCP pipeline</dt>
+                        <dd className="flex items-center gap-2 font-mono text-[12px] text-ink">
+                          <StatusDot ok={systemStatus.mcp_connected} />
+                          {systemStatus.mcp_connected ? 'Connected' : 'Disconnected'}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 px-4 py-3">
+                        <dt className="shrink-0 text-[13px] text-ink-secondary">Study material</dt>
+                        <dd className="min-w-0 truncate font-mono text-[12px] text-ink" title={systemStatus.active_document_name}>
+                          {systemStatus.active_document_name || 'None'}
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="mt-4 text-center font-mono text-[11px] text-ink-muted">
+                      {systemStatus.gemini_active && systemStatus.mcp_connected
+                        ? 'All subsystems nominal'
+                        : 'Some subsystems need attention'}
+                    </p>
+                  </>
+                )}
+              </div>
+            </section>
           </div>
         )}
       </div>
 
-      {!profile.hasProfile && (
-        <OnboardingModal setProfile={setProfile} />
-      )}
+      {!profile.hasProfile && <OnboardingModal setProfile={setProfile} />}
     </div>
   );
 }

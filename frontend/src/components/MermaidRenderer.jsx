@@ -1,19 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import mermaid from 'mermaid';
 
-// Initialize mermaid for dark mode with startOnLoad disabled, as we render manually.
 mermaid.initialize({
   startOnLoad: false,
-  theme: 'dark',
-  // Diagrams can originate from user input. Keep Mermaid's sanitization enabled
-  // before inserting the rendered SVG into the DOM.
+  theme: 'base',
   securityLevel: 'strict',
+  fontFamily: '"Space Grotesk", sans-serif',
   themeVariables: {
-    background: '#2d241e', // matches basalt
-    primaryColor: '#161311', // background
-    primaryTextColor: '#eae1dd', // on-surface
-    lineColor: '#dbc1b6', // on-surface-variant
-  }
+    background: '#191816',
+    mainBkg: '#211f1c',
+    primaryColor: '#211f1c',
+    primaryTextColor: '#efeae3',
+    primaryBorderColor: '#e08a4a',
+    secondaryColor: '#2a2723',
+    tertiaryColor: '#191816',
+    textColor: '#efeae3',
+    lineColor: '#8b8278',
+    nodeBorder: '#e08a4a',
+    edgeLabelBackground: '#141312',
+    clusterBkg: '#191816',
+    clusterBorder: '#3a3631',
+    titleColor: '#efeae3',
+    fontSize: '13px',
+  },
 });
 
 export default function MermaidRenderer({ chart }) {
@@ -29,7 +39,6 @@ export default function MermaidRenderer({ chart }) {
         const cleanChart = chart.trim();
         if (!cleanChart) return;
 
-        // In mermaid v10+, render returns a Promise with { svg, bindFunctions }
         const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanChart);
         if (isMounted) {
           setSvg(renderedSvg);
@@ -37,7 +46,7 @@ export default function MermaidRenderer({ chart }) {
       } catch (err) {
         console.error('Mermaid render error:', err);
         if (isMounted) {
-          setError(err.message || 'Failed to render Mermaid diagram');
+          setError(err.message || 'Failed to render diagram');
         }
       }
     };
@@ -50,25 +59,29 @@ export default function MermaidRenderer({ chart }) {
 
   if (error) {
     return (
-      <div className="bg-red-950/40 border border-red-800 text-red-400 p-3 rounded-lg text-xs font-mono my-2 overflow-x-auto">
-        <div className="font-bold mb-1">⚠️ Mermaid Error:</div>
-        <pre className="text-[11px] leading-relaxed">{chart}</pre>
+      <div className="rounded-lg border border-line bg-surface p-3 text-xs">
+        <div className="mb-1.5 flex items-center gap-1.5 text-[12px] text-negative">
+          <AlertCircle size={14} strokeWidth={1.5} aria-hidden="true" />
+          Diagram could not be rendered
+        </div>
+        <pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-ink-muted">{chart}</pre>
       </div>
     );
   }
 
   if (!svg) {
     return (
-      <div className="flex items-center justify-center space-x-2 text-xs text-magma/80 animate-pulse my-4">
-        <span>📊</span>
-        <span className="font-mono">Compiling conceptual mindmap...</span>
+      <div className="flex items-center gap-2 py-3 text-xs text-ink-muted">
+        <Loader2 size={14} strokeWidth={1.5} className="animate-spin" aria-hidden="true" />
+        Rendering diagram
       </div>
     );
   }
 
   return (
-    <div className="mermaid-diagram bg-[#161311] border border-magma/30 p-4 rounded-xl my-2 overflow-x-auto shadow-lg flex justify-center min-w-full">
-      <div dangerouslySetInnerHTML={{ __html: svg }} className="flex justify-center" />
-    </div>
+    <div
+      className="mermaid-diagram flex justify-center overflow-x-auto"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
   );
 }

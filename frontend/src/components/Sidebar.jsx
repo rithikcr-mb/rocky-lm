@@ -1,4 +1,12 @@
 import React, { useState } from 'react';
+import { Archive, Activity, Compass, NotebookText, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+
+const navItems = [
+  { id: 'expeditions', label: 'Expeditions', Icon: Compass },
+  { id: 'research-log', label: 'Research log', Icon: NotebookText },
+  { id: 'core-status', label: 'Core status', Icon: Activity },
+  { id: 'archived-artifacts', label: 'Archived artifacts', Icon: Archive },
+];
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -12,103 +20,64 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   };
 
   return (
-    <div className={`flex-shrink-0 bg-background border-r border-outline-variant/20 flex flex-col transition-all duration-300 ease-in-out w-[64px] md:p-4 p-3 ${
-      isCollapsed ? 'md:w-[72px]' : 'md:w-[250px]'
-    }`}>
-      {/* Header */}
-      <div className={`flex items-center justify-between mb-8 px-2 flex-col md:flex-row ${isCollapsed ? 'md:flex-col md:gap-4' : 'md:flex-row'}`}>
-        {/* Mobile Mascot Logo (only visible < md) */}
-        <div className="block md:hidden text-xl font-bold text-magma filter drop-shadow(0 0 4px rgba(183, 93, 41, 0.4)) select-none self-center mb-2" title="Rocky-LM">
-          🌋
+    <aside
+      className={`flex h-full shrink-0 flex-col border-r border-line bg-background px-3 py-4 transition-[width] duration-200 ease-ease ${
+        isCollapsed ? 'w-16 md:w-16' : 'w-16 md:w-[248px]'
+      }`}
+    >
+      <div className={`flex items-center gap-2.5 px-1 ${isCollapsed ? 'md:flex-col md:gap-3' : ''}`}>
+        <img
+          src="/rocky-mascot.png"
+          alt=""
+          className="h-8 w-8 shrink-0 object-contain"
+          style={{ imageRendering: 'pixelated' }}
+        />
+        <div className={`hidden min-w-0 flex-1 ${isCollapsed ? 'md:hidden' : 'md:block'}`}>
+          <p className="truncate text-[15px] font-medium leading-none text-ink">Rocky-LM</p>
+          <p className="mt-1.5 truncate text-[11px] leading-none text-ink-muted">Study companion</p>
         </div>
-
-        {/* Desktop Brand Details (hidden < md) */}
-        <div className="hidden md:block flex-1">
-          {!isCollapsed ? (
-            <div>
-              <h1 className="font-bold text-xl text-magma tracking-tight font-heading">Rocky-LM</h1>
-              <p className="text-[10px] text-on-surface-variant font-mono uppercase tracking-wider">Volcanic Intelligence</p>
-            </div>
-          ) : (
-            <div className="text-xl font-bold text-magma filter drop-shadow(0 0 4px rgba(183, 93, 41, 0.4)) select-none" title="Volcanic Intelligence">🌋</div>
-          )}
-        </div>
-
         <button
-          onClick={toggleSidebar}
           type="button"
-          className="hidden md:block text-on-surface-variant hover:text-magma p-1.5 rounded-lg hover:bg-surface-container-low transition-all duration-200 active:scale-95 cursor-pointer text-sm"
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          aria-expanded={isCollapsed}
+          onClick={toggleSidebar}
+          className="hidden h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 ease-ease hover:bg-surface hover:text-ink md:flex"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!isCollapsed}
         >
-          {isCollapsed ? '➡️' : '☰'}
+          {isCollapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
         </button>
       </div>
 
-      <nav className="flex flex-col space-y-2">
-        <button
-          onClick={() => setActiveTab('expeditions')}
-          aria-selected={activeTab === 'expeditions'}
-          className={`flex items-center rounded-lg text-sm transition-all duration-200 active:scale-[0.98] justify-center md:justify-start ${
-            isCollapsed ? 'md:justify-center p-3' : 'md:space-x-3 md:px-4 md:py-2.5'
-          } ${
-            activeTab === 'expeditions'
-              ? 'bg-magma text-white font-bold shadow-md shadow-magma/15'
-              : 'text-on-surface-variant hover:text-magma hover:bg-surface-container-low'
-          } p-3 md:p-2.5`}
-          title={isCollapsed ? "Expeditions" : undefined}
-        >
-          <span className="text-base">🧭</span>
-          <span className={`font-sans hidden ${isCollapsed ? 'md:hidden' : 'md:inline'}`}>Expeditions</span>
-        </button>
-        
-<button
-          onClick={() => setActiveTab('research-log')}
-          aria-selected={activeTab === 'research-log'}
-          className={`flex items-center rounded-lg text-sm transition-all duration-200 active:scale-[0.98] justify-center md:justify-start ${
-            isCollapsed ? 'md:justify-center p-3' : 'md:space-x-3 md:px-4 md:py-2.5'
-          } ${
-            activeTab === 'research-log'
-              ? 'bg-magma text-white font-bold shadow-md shadow-magma/15'
-              : 'text-on-surface-variant hover:text-magma hover:bg-surface-container-low'
-          } p-3 md:p-2.5`}
-          title={isCollapsed ? "Research Log" : undefined}
-        >
-          <span className="text-base">📝</span>
-          <span className={`font-sans hidden ${isCollapsed ? 'md:hidden' : 'md:inline'}`}>Research Log</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('core-status')}
-          aria-selected={activeTab === 'core-status'}
-          className={`flex items-center rounded-lg text-sm transition-all duration-200 active:scale-[0.98] justify-center md:justify-start ${
-            isCollapsed ? 'md:justify-center p-3' : 'md:space-x-3 md:px-4 md:py-2.5'
-          } ${
-            activeTab === 'core-status'
-              ? 'bg-magma text-white font-bold shadow-md shadow-magma/15'
-              : 'text-on-surface-variant hover:text-magma hover:bg-surface-container-low'
-          } p-3 md:p-2.5`}
-          title={isCollapsed ? "Core Status" : undefined}
-        >
-          <span className="text-base">💓</span>
-          <span className={`font-sans hidden ${isCollapsed ? 'md:hidden' : 'md:inline'}`}>Core Status</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('archived-artifacts')}
-          className={`flex items-center rounded-lg text-sm transition-all duration-200 active:scale-[0.98] justify-center md:justify-start ${
-            isCollapsed ? 'md:justify-center p-3' : 'md:space-x-3 md:px-4 md:py-2.5'
-          } ${
-            activeTab === 'archived-artifacts'
-              ? 'bg-magma text-white font-bold shadow-md shadow-magma/15'
-              : 'text-on-surface-variant hover:text-magma hover:bg-surface-container-low'
-          } p-3 md:p-2.5`}
-          title={isCollapsed ? "Archived Artifacts" : undefined}
-        >
-          <span className="text-base">🗄️</span>
-          <span className={`font-sans hidden ${isCollapsed ? 'md:hidden' : 'md:inline'}`}>Archived Artifacts</span>
-        </button>
+      <nav className="mt-8 flex flex-col gap-0.5" aria-label="Main">
+        {navItems.map(({ id, label, Icon }) => {
+          const active = activeTab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              aria-current={active ? 'page' : undefined}
+              aria-label={label}
+              title={label}
+              className={`relative flex h-10 w-full items-center gap-2.5 rounded-lg px-3 text-sm transition-colors duration-150 ease-ease md:h-9 ${
+                isCollapsed ? 'md:justify-center md:px-0' : ''
+              } ${
+                active
+                  ? 'bg-surface-raised text-ink'
+                  : 'text-ink-secondary hover:bg-surface hover:text-ink'
+              }`}
+            >
+              <span
+                className={`absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-ember transition-opacity duration-150 ease-ease ${
+                  active ? 'opacity-100' : 'opacity-0'
+                }`}
+                aria-hidden="true"
+              />
+              <Icon size={18} strokeWidth={1.5} className="shrink-0 text-current" aria-hidden="true" />
+              <span className={`hidden truncate ${isCollapsed ? 'md:hidden' : 'md:inline'}`}>{label}</span>
+            </button>
+          );
+        })}
       </nav>
-    </div>
+    </aside>
   );
 }

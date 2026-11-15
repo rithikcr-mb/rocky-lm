@@ -1,0 +1,11 @@
+{
+  "name": "rocky-lm",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Rocky-LM study companion",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:backend": "py backend/main.py",
+    "dev:frontend": "npm --prefix frontend run dev"
+  }
+}

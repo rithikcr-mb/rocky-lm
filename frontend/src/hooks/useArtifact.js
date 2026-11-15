@@ -23,10 +23,11 @@ export default function useArtifact() {
     const mermaidMatch = text.match(mermaidRegex);
     if (mermaidMatch) {
       const content = mermaidMatch[1];
-      const remainingText = text.replace(mermaidRegex, "📊 Mindmap ready — view it in the Artifacts panel →");
+      const firstLabel = content.match(/\[\s*([^\]]+?)\s*\]/);
+      const remainingText = text.replace(mermaidRegex, "Mindmap ready in the artifacts panel.");
       return {
         type: 'mindmap',
-        title: 'Mindmap',
+        title: firstLabel ? firstLabel[1] : 'Generated mindmap',
         content: content,
         remainingText: remainingText
       };
@@ -38,10 +39,10 @@ export default function useArtifact() {
     if (codeMatch) {
       const language = codeMatch[1];
       const content = codeMatch[2];
-      const remainingText = text.replace(codeRegex, "🐛 Code reviewed — view it in the Artifacts panel →");
+      const remainingText = text.replace(codeRegex, "Code review ready in the artifacts panel.");
       return {
         type: 'code',
-        title: 'Code Review',
+        title: `${language.charAt(0).toUpperCase()}${language.slice(1)} review`,
         content: content,
         language: language,
         remainingText: remainingText
@@ -107,9 +108,10 @@ export default function useArtifact() {
   const handleExport = async () => {
     try {
       await navigator.clipboard.writeText(artifact.content);
-      alert('Exported to clipboard!');
+      return true;
     } catch (err) {
       console.error('Failed to copy:', err);
+      return false;
     }
   };
 

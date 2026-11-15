@@ -45,17 +45,33 @@ export const fetchProfile = async () => {
 };
 
 export const updateProfile = async (name) => {
-  const response = await fetch(`${API_BASE}/profile`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name }),
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}/profile`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name }),
+    });
+  } catch {
+    throw new Error("Could not reach the Rocky backend. Make sure it is running on port 8001.");
+  }
 
   if (!response.ok) {
-    const errData = await response.json();
-    throw new Error(errData.detail || "Failed to save profile");
+    let detail = "Failed to save profile";
+    try {
+      const errData = await response.json();
+      if (errData?.detail) detail = errData.detail;
+    } catch {
+      // Proxy and gateway errors are not JSON.
+    }
+
+    if ([502, 503, 504].includes(response.status)) {
+      detail = "Could not reach the Rocky backend. Make sure it is running on port 8001.";
+    }
+
+    throw new Error(detail);
   }
 
   return response.json();

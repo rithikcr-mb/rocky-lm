@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUp, Loader2, Paperclip } from 'lucide-react';
 
 export default function ChatInput({
   input,
@@ -9,45 +10,57 @@ export default function ChatInput({
   isSending,
   rockyState,
   fileInputRef,
-  chatInputRef
+  chatInputRef,
 }) {
+  const busy = isUploading || isSending;
+
   return (
-    <form onSubmit={sendMessage} className="flex flex-col min-[380px]:flex-row items-stretch min-[380px]:items-center gap-2 w-full">
+    <form onSubmit={sendMessage} className="flex w-full items-center gap-2">
       <input
         type="file"
         ref={fileInputRef}
         onChange={(e) => handleFileUpload(e.target.files?.[0], fileInputRef)}
         accept=".pdf,.txt,.md,text/plain,text/markdown,application/pdf"
         className="hidden"
-        aria-label="Upload file"
+        aria-label="Upload study material"
       />
       <input
         type="text"
         ref={chatInputRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        aria-label="Chat input"
-        placeholder="Ask a technical question or explain what you are struggling with..."
-        className="chat-input flex-1 min-w-[120px] bg-[#1a1614] border border-outline-variant/20 rounded-xl px-4 h-12 text-sm focus:outline-none focus:border-[#e67e22] focus:ring-2 focus:ring-[#e67e22]/25 transition-all duration-300 custom-inner-shadow placeholder:text-on-surface-variant/50 font-mono text-on-surface placeholder:transition-opacity placeholder:duration-200 focus:placeholder:opacity-20 shadow-inner"
+        aria-label="Message Rocky"
+        placeholder="Ask about your notes"
+        className="h-11 min-w-0 flex-1 rounded-[10px] border border-line bg-surface px-3.5 text-sm text-ink transition-colors duration-150 ease-ease placeholder:text-ink-muted focus:border-ember/60 focus:outline-none"
       />
-      <div className="flex flex-row gap-2 w-full min-[380px]:w-auto shrink-0">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading || isSending || (rockyState !== 'idle' && rockyState !== 'error')}
-          className="bg-basalt border border-outline-variant/20 hover:bg-surface-container-high hover:text-[#e67e22] hover:scale-105 active:scale-95 disabled:bg-background disabled:scale-100 text-on-surface font-bold w-12 h-12 rounded-xl text-sm transition-all duration-200 shadow-md flex items-center justify-center cursor-pointer shrink-0"
-        >
-          {isUploading ? '⌛' : '📎'}
-        </button>
-        <button
-          type="submit"
-          disabled={isUploading || isSending || !input.trim() || (rockyState !== 'idle' && rockyState !== 'error')}
-          aria-busy={isUploading || isSending}
-          className="bg-[#e67e22] hover:bg-[#d35400] hover:shadow-lg hover:shadow-[#e67e22]/25 hover:-translate-y-0.5 hover:scale-105 active:scale-95 disabled:bg-outline-variant/20 disabled:scale-100 disabled:opacity-50 text-white font-bold px-4 sm:px-6 h-12 rounded-xl text-sm transition-all duration-200 shadow-md cursor-pointer flex items-center justify-center flex-1 min-[380px]:flex-initial min-[380px]:w-auto shrink-0"
-        >
-          {isSending ? 'Sending...' : 'Transmit'}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={busy || (rockyState !== 'idle' && rockyState !== 'error')}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] border border-line bg-surface text-ink-secondary transition-colors duration-150 ease-ease hover:bg-surface-raised hover:text-ink disabled:opacity-40"
+        aria-label="Upload study material"
+        title="Upload study material"
+      >
+        {isUploading ? (
+          <Loader2 size={17} strokeWidth={1.5} className="animate-spin" aria-hidden="true" />
+        ) : (
+          <Paperclip size={17} strokeWidth={1.5} aria-hidden="true" />
+        )}
+      </button>
+      <button
+        type="submit"
+        disabled={busy || !input.trim() || (rockyState !== 'idle' && rockyState !== 'error')}
+        aria-busy={busy}
+        aria-label="Send message"
+        className="flex h-11 shrink-0 items-center gap-1.5 rounded-[10px] bg-ink px-3.5 text-sm font-medium text-background transition-colors duration-150 ease-ease hover:bg-white disabled:bg-surface-high disabled:text-ink-muted"
+      >
+        {isSending ? (
+          <Loader2 size={16} strokeWidth={1.5} className="animate-spin" aria-hidden="true" />
+        ) : (
+          <ArrowUp size={16} strokeWidth={2} aria-hidden="true" />
+        )}
+        <span className="hidden sm:inline">Send</span>
+      </button>
     </form>
   );
 }

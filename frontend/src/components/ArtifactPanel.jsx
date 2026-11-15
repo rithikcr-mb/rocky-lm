@@ -1,4 +1,5 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
+import { Check, Code2, Copy, Download, Loader2, Network, PackageOpen, X } from 'lucide-react';
 
 const MermaidRenderer = lazy(() => import('./MermaidRenderer'));
 
@@ -8,120 +9,135 @@ export default function ArtifactPanel({
   setShowArtifacts,
   handleDownload,
   handleExport,
-  rockyState
+  rockyState,
 }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!showArtifacts) return null;
+
+  const loading = rockyState === 'thinking' || rockyState === 'troubleshooting';
+  const isMindmap = artifact.type === 'mindmap';
+  const isCode = artifact.type === 'code';
+
+  const copy = async () => {
+    const ok = await handleExport();
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    }
+  };
+
   return (
     <>
-      {/* Mobile-only backdrop overlay */}
-      {showArtifacts && (
-        <div 
-          onClick={() => setShowArtifacts(false)}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden animate-fade-in"
-        />
-      )}
-      <div className={`artifacts-panel fixed inset-y-0 right-0 z-40 lg:relative lg:inset-auto lg:z-auto flex w-full sm:w-[500px] lg:w-[40%] flex-col bg-surface-bright border-l border-outline-variant/20 transition-all duration-300 ease-in-out ${
-        showArtifacts
-          ? 'translate-x-0 opacity-100 pointer-events-auto shadow-2xl'
-          : 'translate-x-full opacity-0 pointer-events-none lg:translate-x-0 lg:opacity-100 lg:w-0 lg:p-0 border-l-0 overflow-hidden'
-      }`}>
-      <div className="px-6 py-4 flex justify-between items-center border-b border-outline-variant/20">
-        <div className="flex flex-col">
-          <h2 className="font-bold text-xenonite text-lg font-heading flex items-center gap-2">
-            <span>📦</span>
-            <span>Artifacts</span>
-          </h2>
-          <span className="text-[10px] text-on-surface-variant font-mono uppercase tracking-wider opacity-60">
-            Generated Outputs
-          </span>
+      <div
+        onClick={() => setShowArtifacts(false)}
+        className="fixed inset-0 z-30 bg-black/50 animate-fade-in lg:hidden"
+        aria-hidden="true"
+      />
+      <aside className="animate-slide-right-in fixed inset-y-0 right-0 z-40 flex w-full max-w-[440px] shrink-0 flex-col border-l border-line bg-background lg:static lg:z-auto lg:w-[400px] lg:max-w-none lg:animate-none xl:w-[440px]">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-4 py-4">
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-medium text-ink">Artifacts</h2>
+            <p className="mt-1 text-[12px] text-ink-muted">Generated from your notes</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowArtifacts(false)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors duration-150 ease-ease hover:bg-surface hover:text-ink"
+            aria-label="Close artifacts"
+          >
+            <X size={16} strokeWidth={1.5} aria-hidden="true" />
+          </button>
         </div>
-        <button 
-          type="button"
-          onClick={() => setShowArtifacts(false)}
-          className="text-on-surface-variant hover:text-white hover:bg-red-500/10 hover:border-red-500/20 border border-transparent w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 active:scale-90 cursor-pointer text-sm font-bold"
-          title="Close Panel"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="flex-1 flex flex-col justify-start overflow-y-auto p-4 sm:p-6">
-        {rockyState === 'thinking' || rockyState === 'troubleshooting' ? (
-          <div className="animate-pulse flex flex-col space-y-4 p-6 sm:p-8 rounded-2xl bg-basalt/25 border border-outline-variant/15 shadow-inner">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="w-8 h-8 bg-basalt/60 rounded-full"></div>
-              <div className="h-6 bg-basalt/60 rounded w-1/3"></div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <div className="flex items-center gap-2 py-2 text-[13px] text-ink-secondary">
+              <Loader2 size={15} strokeWidth={1.5} className="animate-spin text-ember" aria-hidden="true" />
+              Generating artifact
             </div>
-            <div className="h-4 bg-basalt/40 rounded w-full"></div>
-            <div className="h-4 bg-basalt/40 rounded w-5/6"></div>
-            <div className="h-4 bg-basalt/40 rounded w-4/6"></div>
-            <div className="h-32 bg-basalt/20 rounded-xl w-full border border-outline-variant/10 mt-4"></div>
-          </div>
-        ) : artifact.type === null ? (
-          <div className="flex-grow flex flex-col items-center justify-center text-center max-w-sm mx-auto p-6 sm:p-8 rounded-2xl bg-basalt/25 border border-outline-variant/15 shadow-inner">
-            <div className="text-5xl mb-4 animate-pulse text-[#e67e22]/90 filter drop-shadow(0 0 10px rgba(230, 126, 34, 0.4)) select-none">📦</div>
-            <h3 className="font-bold text-on-surface text-base mb-1 font-heading tracking-wide">Artifact Repository</h3>
-            <p className="text-xs font-sans text-on-surface-variant/75 leading-relaxed">
-              No artifacts have been compiled yet. Start a study expedition or request code reviews to generate active documents here.
-            </p>
-          </div>
-        ) : (
-          <div key={artifact.title} className="animate-fade-in bg-basalt/60 backdrop-blur-md border border-outline-variant/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-            {/* Card Header */}
-            <div className="flex justify-between items-center bg-[#1c1714] px-5 py-4 border-b border-outline-variant/20">
-              <div className="flex flex-col">
-                <div className="flex items-center space-x-1.5 text-[10px] text-on-surface-variant font-mono uppercase tracking-wider mb-0.5 opacity-75">
-                  <span>{artifact.type === 'mindmap' ? '🧠' : '💻'}</span>
-                  <span>{artifact.type === 'mindmap' ? 'Mindmap' : 'Code'}</span>
-                </div>
-                <span className="font-bold text-sm text-xenonite font-heading">
-                  {artifact.title}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={handleDownload}
-                  className="text-xs border border-outline-variant/30 rounded-lg px-3 py-1.5 bg-basalt text-on-surface hover:bg-[#e67e22] hover:text-white hover:border-[#e67e22] hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-sans shadow-md font-medium"
-                >
-                  Download
-                </button>
-                <button 
-                  onClick={handleExport}
-                  className="text-xs border border-outline-variant/30 rounded-lg px-3 py-1.5 bg-basalt text-on-surface hover:bg-[#e67e22] hover:text-white hover:border-[#e67e22] hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-sans shadow-md font-medium"
-                >
-                  Export
-                </button>
-              </div>
+          ) : artifact.type === null ? (
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+              <PackageOpen size={24} strokeWidth={1.5} className="text-ink-muted" aria-hidden="true" />
+              <p className="mt-3 text-[13px] font-medium text-ink">No artifacts yet</p>
+              <p className="mt-1 max-w-[240px] text-[12px] leading-5 text-ink-muted">
+                Quizzes, mindmaps, and code reviews appear here.
+              </p>
             </div>
-            {/* Card Content Area */}
-            <div className="p-5 flex flex-col overflow-y-auto">
-              {artifact.type === 'mindmap' && (
-                <div className="w-full min-h-[200px] flex items-center justify-center [&_svg]:max-w-full [&_svg]:h-auto">
-                  <Suspense fallback={<div className="text-xs text-magma/80 animate-pulse p-4">Loading diagram renderer...</div>}>
-                    <MermaidRenderer chart={artifact.content} />
-                  </Suspense>
-                </div>
-              )}
-              {artifact.type === 'code' && (
-                <div className="bg-[#1e1e1e] rounded-xl overflow-hidden border border-outline-variant/20 shadow-2xl flex flex-col h-full">
-                  {/* IDE Header */}
-                  <div className="bg-[#2d241e] px-4 py-2.5 flex items-center justify-between border-b border-outline-variant/20">
-                    <div className="flex space-x-2">
-                      <div className="w-3.5 h-3.5 rounded-full bg-red-500/80"></div>
-                      <div className="w-3.5 h-3.5 rounded-full bg-yellow-500/80"></div>
-                      <div className="w-3.5 h-3.5 rounded-full bg-green-500/80"></div>
-                    </div>
-                    <span className="text-[10px] text-magma font-mono uppercase tracking-widest font-bold">{artifact.language}</span>
+          ) : (
+            <div className="flex h-full flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+                    {isMindmap ? (
+                      <Network size={14} strokeWidth={1.5} aria-hidden="true" />
+                    ) : (
+                      <Code2 size={14} strokeWidth={1.5} aria-hidden="true" />
+                    )}
+                    <span>{isMindmap ? 'Mindmap' : 'Code review'}</span>
                   </div>
-                  {/* Code Content */}
-                  <pre className="p-4 overflow-x-auto text-sm font-mono text-[#d4d4d4] leading-relaxed flex-1 bg-[#12100e]">
-                    <code>{artifact.content}</code>
-                  </pre>
+                  <h3 className="mt-1 truncate text-[14px] font-medium text-ink" title={artifact.title}>
+                    {artifact.title}
+                  </h3>
                 </div>
-              )}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[12px] text-ink-secondary transition-colors duration-150 ease-ease hover:bg-surface-raised hover:text-ink"
+                  >
+                    <Download size={14} strokeWidth={1.5} aria-hidden="true" />
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copy}
+                    className="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[12px] text-ink-secondary transition-colors duration-150 ease-ease hover:bg-surface-raised hover:text-ink"
+                  >
+                    {copied ? (
+                      <Check size={14} strokeWidth={1.5} aria-hidden="true" />
+                    ) : (
+                      <Copy size={14} strokeWidth={1.5} aria-hidden="true" />
+                    )}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 flex-1">
+                {isMindmap && (
+                  <div className="w-full overflow-x-auto rounded-xl border border-line bg-surface p-4 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full">
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center gap-2 text-xs text-ink-muted">
+                          <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                          Rendering diagram
+                        </div>
+                      }
+                    >
+                      <MermaidRenderer chart={artifact.content} />
+                    </Suspense>
+                  </div>
+                )}
+
+                {isCode && (
+                  <div className="overflow-hidden rounded-xl border border-line bg-[#11100f]">
+                    <div className="flex items-center justify-between border-b border-line px-3 py-2">
+                      <span className="flex items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+                        <Code2 size={13} strokeWidth={1.5} aria-hidden="true" />
+                        {artifact.language || 'code'}
+                      </span>
+                    </div>
+                    <pre className="overflow-x-auto p-4 text-[12.5px] leading-relaxed text-ink-secondary">
+                      <code>{artifact.content}</code>
+                    </pre>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+        </div>
+      </aside>
     </>
   );
 }

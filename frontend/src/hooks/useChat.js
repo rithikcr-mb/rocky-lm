@@ -14,6 +14,7 @@ export default function useChat() {
   const isMounted = useRef(true);
 
   useEffect(() => {
+    isMounted.current = true;
     return () => {
       isMounted.current = false;
     };
@@ -65,7 +66,7 @@ export default function useChat() {
         const errorDetail = payload.detail || 'Streaming error';
         setMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { ...updated[updated.length - 1], text: `Error: ${errorDetail}` };
+          updated[updated.length - 1] = { ...updated[updated.length - 1], text: `Rocky could not answer that. ${errorDetail}` };
           return updated;
         });
         return;
@@ -123,7 +124,7 @@ export default function useChat() {
         console.error('Error streaming chat:', error);
         setMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { ...updated[updated.length - 1], text: 'Error: Unable to reach Rocky. Please try again.' };
+          updated[updated.length - 1] = { ...updated[updated.length - 1], text: 'Could not reach Rocky. Check the connection and try again.' };
           return updated;
         });
       }
@@ -149,7 +150,7 @@ export default function useChat() {
 
       setMessages((prev) => [
         ...prev,
-        { role: 'system', text: '[System: Document uploaded successfully. Rocky is ready to analyze.]' }
+        { role: 'system', text: `${file.name} is ready. Rocky can answer from it.` }
       ]);
       
       const data = await fetchActiveDocument();
@@ -158,7 +159,7 @@ export default function useChat() {
       console.error('Error uploading file:', error);
       setMessages((prev) => [
         ...prev,
-        { role: 'system', text: '[System: Upload failed. Please try again.]' }
+        { role: 'system', text: 'Upload failed. Try a PDF, Markdown, or text file.' }
       ]);
     } finally {
       setIsUploading(false);

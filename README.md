@@ -192,6 +192,18 @@ cd Rocky-LM
 
 ---
 
+## Quick Start
+
+From the project root, start both services with one command:
+
+```bash
+npm run dev
+```
+
+This starts the FastAPI backend on `http://localhost:8001` and the Vite frontend on `http://localhost:5173`. Press `Ctrl+C` to stop both.
+
+---
+
 ## Backend
 
 ```bash
@@ -201,6 +213,9 @@ pip install -r requirements.txt
 
 python main.py
 ```
+
+> On Windows, if `python` is not found or opens the Microsoft Store, use `py main.py` instead.
+> Keep the backend running in its own terminal; the frontend proxies `/api` to `http://localhost:8001`.
 
 ---
 
