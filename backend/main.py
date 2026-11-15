@@ -505,7 +505,10 @@ async def lifespan(app: FastAPI):
 
     # Initialize Async Gemini Client
     try:
-        client_obj = genai.Client(http_options=types.HttpOptions(timeout=30))
+        # HttpOptions.timeout is measured in milliseconds. The old value of 30
+        # meant 30 ms, which made every Gemini request fail before it could
+        # reach the API.
+        client_obj = genai.Client(http_options=types.HttpOptions(timeout=60_000))
         async_client = await client_obj.aio.__aenter__()
         await init_chat_session(startup_username)
     except Exception as e:
@@ -842,10 +845,18 @@ async def chat_endpoint(request: ChatRequest):
         except Exception as e:
             logger.error(f"[CHAT ERROR] Stream failure: {e}", exc_info=True)
             err_msg = str(e).lower()
-            if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-                yield f"data: {json.dumps({'status': 'error', 'chunk': 'Sad! My energy core needs a brief recharge cycle. Please wait about one minute before your next question.'})}\n\n"
+            if any(token in err_msg for token in (
+                "401", "unauthenticated", "access_token_type_unsupported",
+                "api key not valid", "api_key_invalid", "permission_denied", "403"
+            )):
+                chunk = "Sad! My Gemini link is not authenticated. Check the API key on the backend."
+            elif "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
+                chunk = "Sad! My energy core needs a brief recharge cycle. Please wait about one minute before your next question."
+            elif "timeout" in err_msg or "timed out" in err_msg or "deadline" in err_msg:
+                chunk = "Sad! The Gemini core took too long to answer. Try again."
             else:
-                yield f"data: {json.dumps({'status': 'error', 'chunk': 'Sad! My circuits experienced a failure.'})}\n\n"
+                chunk = "Sad! My circuits experienced a failure."
+            yield f"data: {json.dumps({'status': 'error', 'chunk': chunk})}\n\n"
 
     # Return the stream to the frontend
     return StreamingResponse(event_generator(), media_type="text/event-stream")
